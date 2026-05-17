@@ -1,22 +1,11 @@
 "use client";
 
-// Hub Galaxy — pure SVG cosmos, styled to match mdfy.app design tokens.
+// Hub Galaxy — pure SVG cosmos.
 //
-// Chrome (header / sidebar / detail panel / slider) uses mdfy CSS vars
+// Chrome (header / sidebar / detail panel / scrubber) uses mdfy CSS vars
 // (--background, --surface, --border, --text-*, --accent), forced to
-// dark theme so the cosmos canvas reads consistent regardless of the
-// user's site theme.
-//
-// Canvas (sky) uses hand-picked hex values because SVG gradients need
-// explicit colours that interpolate to opacity-0 cleanly. The palette
-// stays inside mdfy's warm zinc + orange family.
-//
-// Why SVG (and not xyflow): xyflow renders each node as an HTML div,
-// which means anything with a radial gradient ends up boxed in a
-// rectangular container with a hard alpha edge — looks like a "dark
-// border" the moment you zoom in. SVG circles + <feGaussianBlur>
-// filters give us real glow that fades smoothly into the cosmos, and
-// edges become visible threads instead of hairline strokes.
+// dark theme. Canvas uses hand-picked hex (SVG gradient stops need
+// explicit colours) inside mdfy's warm zinc + orange family.
 //
 // API:  GET /api/user/hub/constellation  (owner-only)
 
@@ -64,16 +53,14 @@ interface Props {
   authHeaders: Record<string, string>;
 }
 
-// Canvas-only colours (SVG gradients need explicit hex for stops).
-// All inside mdfy's warm zinc+orange family — no cyan/purple/pink.
 const SKY = {
   bg: "#09090b",
   bgGradient:
     "radial-gradient(ellipse at 30% 18%, #1a1410 0%, #0e0a07 42%, #09090b 78%)",
-  starDoc: "#fafafa",      // warm white — main sequence
-  starConcept: "#fb923c",  // mdfy accent — primary stars
-  starEntity: "#ea580c",   // deeper orange — proper nouns
-  starTag: "#a8a29e",      // muted warm gray — meta labels
+  starDoc: "#fafafa",
+  starConcept: "#fb923c",
+  starEntity: "#ea580c",
+  starTag: "#a8a29e",
 };
 
 const NEBULA_PALETTE = [
@@ -82,6 +69,19 @@ const NEBULA_PALETTE = [
 ];
 
 const KIND_ORDER: Array<ApiNode["kind"]> = ["concept", "entity", "tag", "doc"];
+
+// Catalogues for fake astronomical designations — purely cosmetic.
+// Deterministic per node id so the same star always carries the
+// same name across reloads / sessions.
+const CATALOGS = ["HD", "HIP", "NGC", "Kepler", "Gaia"];
+function starDesignation(id: string): string {
+  let h = 5381;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) + h + id.charCodeAt(i)) | 0;
+  const abs = Math.abs(h);
+  const cat = CATALOGS[abs % CATALOGS.length];
+  const num = (abs >>> 8) % 99999;
+  return `${cat}-${num}`;
+}
 
 function colourForKind(kind: ApiNode["kind"]): string {
   if (kind === "entity") return SKY.starEntity;
@@ -111,6 +111,15 @@ interface NebulaBlob {
   y: number;
   radius: number;
   colour: string;
+}
+
+interface ShootingStar {
+  id: string;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  totalLen: number;
 }
 
 const elk = new ELK();
@@ -152,10 +161,37 @@ function GalaxyKeyframes() {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.08); }
       }
-      .galaxy-star { transform-box: fill-box; transform-origin: center; }
+      /* Hover ripple — gentle expanding ring around the cursor target. */
+      @keyframes galaxyHoverRipple {
+        0%   { transform: scale(0.6); opacity: 0.5; }
+        100% { transform: scale(2.2); opacity: 0; }
+      }
+      /* Star ignite — a brief flash for a star appearing during Growth replay. */
+      @keyframes galaxyIgnite {
+        0%   { transform: scale(0.3); opacity: 0; }
+        18%  { transform: scale(5); opacity: 0.95; }
+        100% { transform: scale(18); opacity: 0; }
+      }
+      /* Search magnetic pulse — matched stars ring out, three times. */
+      @keyframes galaxyMagneticPulse {
+        0%   { transform: scale(0.8); opacity: 0.8; }
+        100% { transform: scale(3.6); opacity: 0; }
+      }
+      /* Shooting-star — animates stroke-dashoffset so a short trail
+         segment travels along the line. --shoot-len is the path length
+         in CSS pixels, set inline per instance. */
+      @keyframes galaxyShoot {
+        0%   { stroke-dashoffset: 0; opacity: 0; }
+        7%   { opacity: 1; }
+        92%  { opacity: 0.85; }
+        100% { stroke-dashoffset: calc(var(--shoot-len) * -1); opacity: 0; }
+      }
+      .galaxy-star,
+      .galaxy-pulse-ring,
+      .galaxy-ignite-burst,
+      .galaxy-hover-ring { transform-box: fill-box; transform-origin: center; }
 
-      /* Range — match mdfy's accent. Track is a thin line under the
-         thumb; thumb is a small orange disc. */
+      /* Range — mdfy accent on a thin track. */
       .galaxy-range {
         -webkit-appearance: none;
         appearance: none;
@@ -196,21 +232,20 @@ function GalaxyKeyframes() {
   );
 }
 
-// Small button — matches the inline transparent-bordered buttons used
-// throughout MdEditor. Keep nudge-sized so a row of three fits the
-// slider bar tidily.
 function GalaxyButton({
   active,
   onClick,
   children,
   title,
   primary,
+  floating,
 }: {
   active?: boolean;
   onClick: () => void;
   children: React.ReactNode;
   title?: string;
   primary?: boolean;
+  floating?: boolean;
 }) {
   return (
     <button
@@ -228,7 +263,7 @@ function GalaxyButton({
           ? "var(--accent-dim)"
           : active
             ? "var(--toggle-bg)"
-            : "transparent",
+            : floating ? "rgba(9, 9, 11, 0.6)" : "transparent",
         color: primary || active ? "var(--accent)" : "var(--text-secondary)",
         border: "1px solid",
         borderColor: primary || active ? "var(--accent-dim)" : "var(--border)",
@@ -236,6 +271,7 @@ function GalaxyButton({
         cursor: "pointer",
         letterSpacing: 0.3,
         transition: "background var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default), border-color var(--duration-fast) var(--ease-default)",
+        backdropFilter: floating ? "blur(8px)" : undefined,
       }}
     >
       {children}
@@ -251,16 +287,27 @@ export default function HubGalaxy({ authHeaders }: Props) {
   const [sliderDate, setSliderDate] = useState<string>("");
   const [playing, setPlaying] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [pulseId, setPulseId] = useState(0);
+  // Newly-ignited stars during Growth replay — id -> expiresAt(ms).
+  const [igniteEntries, setIgniteEntries] = useState<Map<string, number>>(new Map());
+  // Active shooting stars — auto-cleaned via setTimeout after their
+  // CSS animation finishes.
+  const [shooters, setShooters] = useState<ShootingStar[]>([]);
   const [visibleKinds, setVisibleKinds] = useState<Set<ApiNode["kind"]>>(
     () => new Set(KIND_ORDER),
   );
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
+  const viewRef = useRef(view);
+  useEffect(() => { viewRef.current = view; }, [view]);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const playRef = useRef<number | null>(null);
-  const dragRef = useRef<{ startX: number; startY: number; viewX: number; viewY: number } | null>(null);
+  const cameraAnimRef = useRef<number | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; viewX: number; viewY: number; moved: boolean } | null>(null);
+  const prevVisibleIdsRef = useRef<Set<string>>(new Set());
 
   // Fetch
   useEffect(() => {
@@ -314,7 +361,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
     return () => ro.disconnect();
   }, [loaded]);
 
-  // Positioned nodes
   const all = useMemo<Positioned[]>(() => {
     if (!data || !positions) return [];
     return data.nodes.map((n, idx) => {
@@ -322,7 +368,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
       const colour = n.kind === "doc"
         ? colourForBundle(n.bundleId, data.clusters)
         : colourForKind(n.kind);
-      // sqrt curve — big concepts read as giants without crowding.
       const occ = n.occurrence || 1;
       const size = n.kind === "doc"
         ? 1.6
@@ -339,7 +384,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
     });
   }, [data, positions]);
 
-  // Initial fit
   const didFitRef = useRef(false);
   useEffect(() => {
     if (didFitRef.current) return;
@@ -368,7 +412,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
   }, [data]);
 
   const visible = useMemo(() => {
-    if (!data) return { nodes: [] as Positioned[], edges: [] as ApiEdge[], neighbours: new Set<string>() };
+    if (!data) return { nodes: [] as Positioned[], edges: [] as ApiEdge[], neighbours: new Set<string>(), hoverNeighbours: new Set<string>() };
     const cutoff = (sliderDate || data.hubEnd) + "T23:59:59Z";
     const term = searchTerm.trim().toLowerCase();
     const visibleIds = new Set<string>();
@@ -385,19 +429,24 @@ export default function HubGalaxy({ authHeaders }: Props) {
         if (e.target === selectedId && visibleIds.has(e.source)) neighbours.add(e.source);
       }
     }
+    const hoverNeighbours = new Set<string>();
+    if (hoveredId && hoveredId !== selectedId && visibleIds.has(hoveredId)) {
+      for (const e of data.edges) {
+        if (e.createdAt > cutoff) continue;
+        if (e.source === hoveredId && visibleIds.has(e.target)) hoverNeighbours.add(e.target);
+        if (e.target === hoveredId && visibleIds.has(e.source)) hoverNeighbours.add(e.source);
+      }
+    }
     const nodes = all.filter((n) =>
       visibleIds.has(n.id) &&
-      (!term || n.api.label.toLowerCase().includes(term) || selectedId === n.id || neighbours.has(n.id)),
+      (!term || n.api.label.toLowerCase().includes(term) || selectedId === n.id || neighbours.has(n.id) || hoveredId === n.id || hoverNeighbours.has(n.id)),
     );
-    // Edges must filter against the *rendered* node set, not just
-    // kind-visible — otherwise search hides nodes but lines to them
-    // keep drawing, ending in mid-air.
     const renderedIds = new Set(nodes.map((n) => n.id));
     const edges = data.edges.filter(
       (e) => e.createdAt <= cutoff && renderedIds.has(e.source) && renderedIds.has(e.target),
     );
-    return { nodes, edges, neighbours };
-  }, [data, all, sliderDate, visibleKinds, searchTerm, selectedId]);
+    return { nodes, edges, neighbours, hoverNeighbours };
+  }, [data, all, sliderDate, visibleKinds, searchTerm, selectedId, hoveredId]);
 
   const nebulae = useMemo<NebulaBlob[]>(() => {
     if (!data || all.length === 0) return [];
@@ -426,7 +475,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
     return out;
   }, [data, all]);
 
-  // Replay
+  // Replay tween — also flag newly-appeared stars for the ignite flash.
   useEffect(() => {
     if (!playing || !data) return;
     const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
@@ -459,6 +508,73 @@ export default function HubGalaxy({ authHeaders }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 
+  // Ignite tracker — when visible.nodes grows during play, flash the
+  // new arrivals. Doesn't fire on manual scrubbing or kind-filter toggles.
+  useEffect(() => {
+    const currentIds = new Set(visible.nodes.map((n) => n.id));
+    if (playing) {
+      const prev = prevVisibleIdsRef.current;
+      const newOnes: string[] = [];
+      for (const id of currentIds) if (!prev.has(id)) newOnes.push(id);
+      if (newOnes.length > 0) {
+        const expiresAt = performance.now() + 900;
+        setIgniteEntries((m) => {
+          const next = new Map(m);
+          for (const id of newOnes) next.set(id, expiresAt);
+          return next;
+        });
+        for (const id of newOnes) {
+          setTimeout(() => {
+            setIgniteEntries((m) => {
+              if (!m.has(id)) return m;
+              const next = new Map(m);
+              next.delete(id);
+              return next;
+            });
+          }, 950);
+        }
+      }
+    }
+    prevVisibleIdsRef.current = currentIds;
+  }, [visible.nodes, playing]);
+
+  // Search magnetic pulse — bump pulse counter on each non-empty
+  // search change. Matched stars get a transient ring overlay keyed
+  // off pulseId so React re-mounts and the CSS animation restarts.
+  useEffect(() => {
+    if (searchTerm.trim().length > 0) setPulseId((p) => p + 1);
+  }, [searchTerm]);
+
+  // Shooting-star spawner — kicks off a new streak every 6-16s.
+  // Lives in canvas-pixel space (not graph space) so it cuts across
+  // the visible frame regardless of zoom.
+  useEffect(() => {
+    if (size.w === 0) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const spawn = () => {
+      if (cancelled) return;
+      const fromEdge = Math.floor(Math.random() * 4); // 0=top 1=right 2=bottom 3=left
+      let fromX = 0, fromY = 0, toX = 0, toY = 0;
+      if (fromEdge === 0) { fromX = Math.random() * size.w; fromY = -30; toX = fromX + (Math.random() - 0.5) * size.w * 0.6; toY = size.h * 0.7 + Math.random() * size.h * 0.3; }
+      else if (fromEdge === 1) { fromX = size.w + 30; fromY = Math.random() * size.h * 0.5; toX = size.w * 0.2 + Math.random() * size.w * 0.5; toY = fromY + size.h * 0.5; }
+      else if (fromEdge === 2) { fromX = Math.random() * size.w; fromY = size.h + 30; toX = fromX + (Math.random() - 0.5) * size.w * 0.5; toY = size.h * 0.3 - Math.random() * size.h * 0.3; }
+      else { fromX = -30; fromY = Math.random() * size.h * 0.5; toX = size.w * 0.4 + Math.random() * size.w * 0.4; toY = fromY + size.h * 0.5; }
+      const dx = toX - fromX, dy = toY - fromY;
+      const totalLen = Math.sqrt(dx * dx + dy * dy);
+      const id = `shoot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      setShooters((s) => [...s, { id, fromX, fromY, toX, toY, totalLen }]);
+      // Auto-clean after the streak's CSS animation completes.
+      setTimeout(() => {
+        setShooters((s) => s.filter((x) => x.id !== id));
+      }, 1400);
+      timer = setTimeout(spawn, 6000 + Math.random() * 10000);
+    };
+    // First streak after a short delay so the canvas isn't busy on load.
+    timer = setTimeout(spawn, 3500);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [size.w, size.h]);
+
   // Pan
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
@@ -467,19 +583,24 @@ export default function HubGalaxy({ authHeaders }: Props) {
       startY: e.clientY,
       viewX: view.x,
       viewY: view.y,
+      moved: false,
     };
   }, [view.x, view.y]);
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragRef.current.moved = true;
     setView((v) => ({ ...v, x: dragRef.current!.viewX + dx, y: dragRef.current!.viewY + dy }));
   }, []);
   const handleMouseUp = useCallback(() => {
     dragRef.current = null;
   }, []);
 
-  // Native wheel — React's wheel is passive, can't preventDefault.
+  // Native wheel listener with passive: false (so preventDefault works
+  // and the page doesn't scroll behind the canvas). Re-attach when
+  // the SVG mounts (deps include `loaded` because the SVG is in the
+  // main render branch only).
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
@@ -498,6 +619,29 @@ export default function HubGalaxy({ authHeaders }: Props) {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
+  }, [loaded, error, data]);
+
+  // Smooth camera animation between two view states (used by Fit and
+  // double-click zoom-to-focus).
+  const animateViewTo = useCallback((targetX: number, targetY: number, targetK: number, durationMs = 450) => {
+    if (cameraAnimRef.current) cancelAnimationFrame(cameraAnimRef.current);
+    const fromX = viewRef.current.x;
+    const fromY = viewRef.current.y;
+    const fromK = viewRef.current.k;
+    const startT = performance.now();
+    const tick = () => {
+      const t = Math.min(1, (performance.now() - startT) / durationMs);
+      // ease-in-out cubic
+      const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      setView({
+        x: fromX + (targetX - fromX) * e,
+        y: fromY + (targetY - fromY) * e,
+        k: fromK + (targetK - fromK) * e,
+      });
+      if (t < 1) cameraAnimRef.current = requestAnimationFrame(tick);
+      else cameraAnimRef.current = null;
+    };
+    cameraAnimRef.current = requestAnimationFrame(tick);
   }, []);
 
   const handleRecentre = useCallback(() => {
@@ -515,8 +659,18 @@ export default function HubGalaxy({ authHeaders }: Props) {
     const clampedK = Math.max(0.2, Math.min(3, k));
     const x = size.w / 2 - (minX + bbW / 2) * clampedK;
     const y = size.h / 2 - (minY + bbH / 2) * clampedK;
-    setView({ x, y, k: clampedK });
-  }, [visible.nodes, size]);
+    animateViewTo(x, y, clampedK);
+  }, [visible.nodes, size, animateViewTo]);
+
+  // Double-click on a star → smooth fly-to. Picks a comfortable zoom
+  // (1.6) unless the user is already deeper, in which case we keep them.
+  const handleStarDoubleClick = useCallback((n: Positioned) => {
+    const targetK = Math.max(viewRef.current.k, 1.6);
+    const targetX = size.w / 2 - n.x * targetK;
+    const targetY = size.h / 2 - n.y * targetK;
+    animateViewTo(targetX, targetY, targetK, 520);
+    setSelectedId(n.id);
+  }, [size, animateViewTo]);
 
   const selected = selectedId ? apiMap.get(selectedId) : null;
   const linkedDocs = useMemo(() => {
@@ -528,7 +682,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
       .slice(0, 12);
   }, [selected, data, apiMap]);
 
-  // Slider position helpers
+  // Slider helpers
   const sliderPct = useMemo(() => {
     if (!data) return 0;
     const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
@@ -548,9 +702,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
     return (todayMs - startMs) / total;
   }, [data]);
 
-  // Wrap forces dark theme so mdfy CSS vars resolve to dark values
-  // regardless of the user's site theme. The canvas itself is always
-  // dark — it's the cosmos.
   const cosmosWrap: React.CSSProperties = {
     height: "100vh",
     background: SKY.bg,
@@ -578,15 +729,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
         <Link
           href="/"
           className="text-caption font-mono"
-          style={{
-            background: "var(--accent)",
-            color: "var(--background)",
-            padding: "8px 16px",
-            borderRadius: 6,
-            textDecoration: "none",
-            fontWeight: 600,
-            letterSpacing: 0.3,
-          }}
+          style={{ background: "var(--accent)", color: "var(--background)", padding: "8px 16px", borderRadius: 6, textDecoration: "none", fontWeight: 600, letterSpacing: 0.3 }}
         >
           Go to mdfy.app
         </Link>
@@ -603,15 +746,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
         <Link
           href="/"
           className="text-caption font-mono"
-          style={{
-            background: "var(--accent)",
-            color: "var(--background)",
-            padding: "8px 16px",
-            borderRadius: 6,
-            textDecoration: "none",
-            fontWeight: 600,
-            letterSpacing: 0.3,
-          }}
+          style={{ background: "var(--accent)", color: "var(--background)", padding: "8px 16px", borderRadius: 6, textDecoration: "none", fontWeight: 600, letterSpacing: 0.3 }}
         >
           Back to editor
         </Link>
@@ -621,6 +756,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
   const searchActive = searchTerm.trim().length > 0;
   const term = searchTerm.trim().toLowerCase();
+  // Matched-star ids for the magnetic-pulse overlay
+  const matchedNodes = searchActive
+    ? visible.nodes.filter((n) => n.api.label.toLowerCase().includes(term))
+    : [];
 
   return (
     <div
@@ -638,7 +777,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
     >
       <GalaxyKeyframes />
 
-      {/* Header — minimal, mdfy-style: back link, brand, counts. */}
+      {/* Header */}
       <header
         style={{
           height: 40,
@@ -653,17 +792,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
           zIndex: 3,
         }}
       >
-        <Link
-          href="/"
-          className="text-caption"
-          style={{ color: "var(--text-muted)", textDecoration: "none" }}
-        >
+        <Link href="/" className="text-caption" style={{ color: "var(--text-muted)", textDecoration: "none" }}>
           ← Back
         </Link>
-        <span
-          className="text-caption font-mono uppercase"
-          style={{ color: "var(--text-primary)", letterSpacing: 1.5, fontWeight: 600 }}
-        >
+        <span className="text-caption font-mono uppercase" style={{ color: "var(--text-primary)", letterSpacing: 1.5, fontWeight: 600 }}>
           Galaxy
         </span>
         <span className="text-caption font-mono" style={{ color: "var(--text-faint)", letterSpacing: 0.3 }}>
@@ -671,7 +803,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
         </span>
       </header>
 
-      {/* Body */}
       <div style={{ flex: 1, display: "flex", minHeight: 0, position: "relative", zIndex: 1 }}>
         {/* Sidebar */}
         <aside
@@ -689,10 +820,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
           }}
         >
           <div>
-            <label
-              className="text-caption font-mono uppercase"
-              style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}
-            >
+            <label className="text-caption font-mono uppercase" style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}>
               Search
             </label>
             <input
@@ -714,10 +842,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
           </div>
 
           <div>
-            <label
-              className="text-caption font-mono uppercase"
-              style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}
-            >
+            <label className="text-caption font-mono uppercase" style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}>
               Star kinds
             </label>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -768,10 +893,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
           {data.clusters.length > 0 && (
             <div>
-              <label
-                className="text-caption font-mono uppercase"
-                style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}
-              >
+              <label className="text-caption font-mono uppercase" style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}>
                 Nebulae
               </label>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -823,8 +945,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 Capped at top 200 concepts / 200 most-recent docs.
               </p>
             )}
-            <p className="text-caption font-mono" style={{ color: "var(--text-faint)", marginTop: 10, lineHeight: 1.5, letterSpacing: 0.3 }}>
+            <p className="text-caption font-mono" style={{ color: "var(--text-faint)", marginTop: 10, lineHeight: 1.6, letterSpacing: 0.3 }}>
               drag to pan / scroll to zoom
+              <br />
+              hover to focus / dbl-click to fly
             </p>
           </div>
         </aside>
@@ -834,6 +958,14 @@ export default function HubGalaxy({ authHeaders }: Props) {
           ref={containerRef}
           style={{ flex: 1, minWidth: 0, position: "relative", cursor: dragRef.current ? "grabbing" : "grab" }}
         >
+          {/* Floating Fit — top-right of canvas. */}
+          <div style={{ position: "absolute", top: 12, right: 12, zIndex: 5, display: "flex", gap: 6 }}>
+            <GalaxyButton floating onClick={handleRecentre} title="Fit to view">
+              <Maximize2 width={12} height={12} />
+              <span>Fit</span>
+            </GalaxyButton>
+          </div>
+
           <svg
             ref={svgRef}
             width="100%"
@@ -843,6 +975,8 @@ export default function HubGalaxy({ authHeaders }: Props) {
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
             onClick={(e) => {
+              // Don't deselect when finishing a drag-pan
+              if (dragRef.current?.moved) return;
               if (e.target === svgRef.current) setSelectedId(null);
             }}
             style={{ display: "block" }}
@@ -884,7 +1018,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
                   </radialGradient>
                 );
               })}
-
               {nebulae.map((b) => (
                 <radialGradient key={`doc-${b.id}`} id={`halo-doc-${b.id}`}>
                   <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
@@ -893,7 +1026,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
                   <stop offset="100%" stopColor={b.colour} stopOpacity="0" />
                 </radialGradient>
               ))}
-
               {nebulae.map((b) => (
                 <radialGradient key={`neb-${b.id}`} id={`neb-${b.id}`}>
                   <stop offset="0%" stopColor={b.colour} stopOpacity="0.22" />
@@ -903,6 +1035,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
               ))}
             </defs>
 
+            {/* WORLD — pan + zoom transform */}
             <g transform={`translate(${view.x}, ${view.y}) scale(${view.k})`}>
               {/* Nebulae */}
               <g style={{ mixBlendMode: "screen" }}>
@@ -923,14 +1056,16 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 ))}
               </g>
 
-              {/* Edges — gentle bezier curves */}
+              {/* Edges */}
               <g>
                 {visible.edges.map((e) => {
                   const a = positions?.get(e.source);
                   const b = positions?.get(e.target);
                   if (!a || !b) return null;
                   const isSelectedEnd = selectedId !== null && (e.source === selectedId || e.target === selectedId);
-                  const anyDimmer = selectedId !== null || searchActive;
+                  const isHoveredEnd = hoveredId !== null && hoveredId !== selectedId && (e.source === hoveredId || e.target === hoveredId);
+                  const isLit = isSelectedEnd || isHoveredEnd;
+                  const anyDimmer = selectedId !== null || hoveredId !== null || searchActive;
                   let h = 0;
                   for (let i = 0; i < e.id.length; i++) h = ((h << 5) - h + e.id.charCodeAt(i)) | 0;
                   const dx = b.x - a.x;
@@ -946,20 +1081,57 @@ export default function HubGalaxy({ authHeaders }: Props) {
                       key={e.id}
                       d={d}
                       fill="none"
-                      stroke={isSelectedEnd ? SKY.starConcept : "#fafafa"}
+                      stroke={isLit ? SKY.starConcept : "#fafafa"}
                       strokeOpacity={
-                        isSelectedEnd
+                        isLit
                           ? 0.65
                           : anyDimmer
                             ? 0.015
                             : e.kind === "concept_concept" ? 0.09 : 0.05
                       }
-                      strokeWidth={(isSelectedEnd ? 0.9 : 0.35) / Math.max(0.5, view.k * 0.7)}
+                      strokeWidth={(isLit ? 0.9 : 0.35) / Math.max(0.5, view.k * 0.7)}
                       strokeLinecap="round"
-                      filter={isSelectedEnd ? "url(#thread-glow)" : undefined}
+                      filter={isLit ? "url(#thread-glow)" : undefined}
                     />
                   );
                 })}
+              </g>
+
+              {/* Ignite flashes — large bright burst over newly-appeared stars during Growth replay. */}
+              <g style={{ pointerEvents: "none" }}>
+                {Array.from(igniteEntries.entries()).map(([id, expiresAt]) => {
+                  const star = visible.nodes.find((n) => n.id === id);
+                  if (!star) return null;
+                  return (
+                    <g key={`ignite-${id}-${expiresAt}`} transform={`translate(${star.x}, ${star.y})`}>
+                      <circle
+                        r={3}
+                        fill="#ffffff"
+                        filter="url(#glow-core-strong)"
+                        className="galaxy-ignite-burst"
+                        style={{ animation: "galaxyIgnite 900ms ease-out forwards" }}
+                      />
+                    </g>
+                  );
+                })}
+              </g>
+
+              {/* Magnetic pulses — ring overlay for search matches */}
+              <g style={{ pointerEvents: "none" }}>
+                {searchActive && pulseId > 0 && matchedNodes.map((n) => (
+                  <circle
+                    key={`pulse-${n.id}-${pulseId}`}
+                    cx={n.x}
+                    cy={n.y}
+                    r={Math.max(8, n.size * 4)}
+                    fill="none"
+                    stroke={SKY.starConcept}
+                    strokeOpacity={0.7}
+                    strokeWidth={1.2 / Math.max(0.5, view.k)}
+                    className="galaxy-pulse-ring"
+                    style={{ animation: "galaxyMagneticPulse 1.4s ease-out 3" }}
+                  />
+                ))}
               </g>
 
               {/* Stars */}
@@ -968,16 +1140,18 @@ export default function HubGalaxy({ authHeaders }: Props) {
                   const matched = !searchActive || n.api.label.toLowerCase().includes(term);
                   const isSelected = n.id === selectedId;
                   const isNeighbour = visible.neighbours.has(n.id);
-                  const focusing = selectedId !== null || searchActive;
-                  const inFocus = isSelected || isNeighbour || (searchActive && matched);
+                  const isHovered = n.id === hoveredId;
+                  const isHoverNeighbour = visible.hoverNeighbours.has(n.id);
+                  const focusing = selectedId !== null || hoveredId !== null || searchActive;
+                  const inFocus = isSelected || isNeighbour || isHovered || isHoverNeighbour || (searchActive && matched);
                   const dimmed = focusing && !inFocus;
-                  const haloR = n.size * (isSelected ? 7 : 4.5);
-                  const coreR = n.size * (isSelected ? 1.5 : 1);
+                  const haloR = n.size * (isSelected ? 7 : isHovered ? 6 : 4.5);
+                  const coreR = n.size * (isSelected ? 1.5 : isHovered ? 1.25 : 1);
                   const haloFill =
                     n.api.kind === "doc" && n.api.bundleId
                       ? `url(#halo-doc-${n.api.bundleId})`
                       : `url(#halo-${n.api.kind})`;
-                  const showLabel = isSelected || isNeighbour || (searchActive && matched) || view.k >= 1.4;
+                  const showLabel = isSelected || isNeighbour || isHovered || isHoverNeighbour || (searchActive && matched) || view.k >= 1.4;
                   const floatIdx = idx % 4;
                   const period = 7 + (idx % 7);
                   return (
@@ -986,14 +1160,33 @@ export default function HubGalaxy({ authHeaders }: Props) {
                       transform={`translate(${n.x}, ${n.y})`}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (dragRef.current?.moved) return;
                         setSelectedId(n.id === selectedId ? null : n.id);
                       }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        handleStarDoubleClick(n);
+                      }}
+                      onMouseEnter={() => setHoveredId(n.id)}
+                      onMouseLeave={() => setHoveredId((h) => (h === n.id ? null : h))}
                       style={{
                         cursor: "pointer",
                         opacity: dimmed ? 0.05 : 1,
                         transition: "opacity 0.3s ease",
                       }}
                     >
+                      {/* Hover ripple — only on the hovered star */}
+                      {isHovered && (
+                        <circle
+                          r={haloR}
+                          fill="none"
+                          stroke={n.colour}
+                          strokeWidth={0.8 / Math.max(0.5, view.k)}
+                          strokeOpacity={0.6}
+                          className="galaxy-hover-ring"
+                          style={{ animation: "galaxyHoverRipple 1.4s ease-out infinite", pointerEvents: "none" }}
+                        />
+                      )}
                       <g
                         className="galaxy-star"
                         style={{
@@ -1012,7 +1205,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
                         <circle
                           r={coreR}
                           fill="#fafafa"
-                          filter={isSelected ? "url(#glow-core-strong)" : "url(#glow-core)"}
+                          filter={isSelected || isHovered ? "url(#glow-core-strong)" : "url(#glow-core)"}
                           style={isSelected ? {
                             animation: `galaxyPulse 2.4s ease-in-out infinite`,
                             transformBox: "fill-box",
@@ -1040,10 +1233,54 @@ export default function HubGalaxy({ authHeaders }: Props) {
                           {n.api.label}
                         </text>
                       )}
+                      {/* Designation — only on hover, sits just below the label */}
+                      {isHovered && (
+                        <text
+                          y={haloR + 22}
+                          textAnchor="middle"
+                          style={{
+                            fontSize: 8 / Math.max(0.6, view.k * 0.7),
+                            fill: "#a8a29e",
+                            fontFamily: "ui-monospace, 'JetBrains Mono', 'Fira Code', monospace",
+                            letterSpacing: 0.5,
+                            pointerEvents: "none",
+                            paintOrder: "stroke",
+                            stroke: "rgba(9, 9, 11, 0.85)",
+                            strokeWidth: 2.5 / Math.max(0.6, view.k * 0.7),
+                            strokeLinejoin: "round",
+                          }}
+                        >
+                          {starDesignation(n.id)}
+                        </text>
+                      )}
                     </g>
                   );
                 })}
               </g>
+            </g>
+
+            {/* Shooting stars — viewport-space (NOT inside world g), so
+                they cross the visible frame regardless of pan/zoom. */}
+            <g style={{ pointerEvents: "none" }}>
+              {shooters.map((s) => (
+                <line
+                  key={s.id}
+                  x1={s.fromX}
+                  y1={s.fromY}
+                  x2={s.toX}
+                  y2={s.toY}
+                  stroke="#fafafa"
+                  strokeWidth={1.4}
+                  strokeLinecap="round"
+                  filter="url(#thread-glow)"
+                  style={{
+                    strokeDasharray: `70 ${s.totalLen}`,
+                    strokeDashoffset: 0,
+                    animation: "galaxyShoot 1.2s cubic-bezier(0.4, 0, 0.6, 1) forwards",
+                    ['--shoot-len' as keyof React.CSSProperties as string]: `${s.totalLen + 70}px`,
+                  } as React.CSSProperties}
+                />
+              ))}
             </g>
           </svg>
         </div>
@@ -1101,6 +1338,11 @@ export default function HubGalaxy({ authHeaders }: Props) {
               {selected.label}
             </h3>
 
+            {/* Astronomical designation — fake but stable per node id. */}
+            <p className="text-caption font-mono" style={{ color: "var(--text-faint)", margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>
+              {starDesignation(selected.id)}
+            </p>
+
             {selected.description && (
               <p className="text-body" style={{ color: "var(--text-secondary)", lineHeight: 1.55, margin: 0 }}>
                 {selected.description}
@@ -1116,10 +1358,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
             {linkedDocs.length > 0 && (
               <div>
-                <label
-                  className="text-caption font-mono uppercase"
-                  style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}
-                >
+                <label className="text-caption font-mono uppercase" style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}>
                   Anchored to
                 </label>
                 <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
@@ -1163,10 +1402,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
             {visible.neighbours.size > 0 && (
               <div>
-                <label
-                  className="text-caption font-mono uppercase"
-                  style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}
-                >
+                <label className="text-caption font-mono uppercase" style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}>
                   Connected
                 </label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -1201,13 +1437,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
         )}
       </div>
 
-      {/* Bottom: time scrubber.
-          Layout — [start] [scrubber w/ today marker] [end] [today date / cursor date] [recentre] [play/pause].
-          Today marker is a vertical orange line on the track at the
-          position where today's date sits in the hub's lifetime. */}
+      {/* Scrubber — [start] [scrubber w/ TODAY mark and floating cursor date] [end] [▶ Growth] */}
       <footer
         style={{
-          height: 44,
+          height: 48,
           display: "flex",
           alignItems: "center",
           padding: "0 14px",
@@ -1226,34 +1459,52 @@ export default function HubGalaxy({ authHeaders }: Props) {
           {data.hubStart}
         </span>
 
-        {/* Scrubber wrapper — holds the input plus an absolute "today" marker. */}
-        <div style={{ flex: 1, position: "relative", height: 18, display: "flex", alignItems: "center" }}>
+        <div style={{ flex: 1, position: "relative", height: 32, display: "flex", alignItems: "center" }}>
+          {/* Cursor date — floats above the thumb, accent-coloured. */}
+          <div
+            style={{
+              position: "absolute",
+              left: `calc(${sliderPct * 100}% - 28px)`,
+              top: -2,
+              padding: "1px 6px",
+              fontSize: 10,
+              color: "var(--accent)",
+              background: "rgba(9, 9, 11, 0.85)",
+              border: "1px solid var(--accent-dim)",
+              borderRadius: 4,
+              fontFamily: "ui-monospace, 'JetBrains Mono', 'Fira Code', monospace",
+              letterSpacing: 0.3,
+              pointerEvents: "none",
+              whiteSpace: "nowrap",
+              transition: "left 0.05s linear",
+            }}
+          >
+            {sliderDate || data.hubEnd}
+          </div>
+
           {todayPct !== null && (
             <>
-              {/* Today vertical marker — calculated against the same
-                  startMs..endMs range as the slider thumb. */}
               <div
                 title={`Today · ${new Date().toISOString().slice(0, 10)}`}
                 style={{
                   position: "absolute",
                   left: `calc(${todayPct * 100}% - 0.5px)`,
-                  top: 1,
-                  height: 16,
+                  top: 18,
+                  height: 12,
                   width: 1,
                   background: "var(--text-muted)",
                   opacity: 0.5,
                   pointerEvents: "none",
                 }}
               />
-              {/* Tiny "today" label nub on top of the marker */}
               <div
                 style={{
                   position: "absolute",
-                  left: `calc(${todayPct * 100}% - 18px)`,
-                  top: -10,
-                  fontSize: 9,
+                  left: `calc(${todayPct * 100}% - 16px)`,
+                  bottom: -4,
+                  fontSize: 8,
                   letterSpacing: 0.4,
-                  color: "var(--text-muted)",
+                  color: "var(--text-faint)",
                   fontFamily: "ui-monospace, 'JetBrains Mono', 'Fira Code', monospace",
                   textTransform: "uppercase",
                   pointerEvents: "none",
@@ -1263,6 +1514,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
               </div>
             </>
           )}
+
           <input
             type="range"
             min={0}
@@ -1277,7 +1529,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
               setSliderDate(new Date(target).toISOString().slice(0, 10));
             }}
             className="galaxy-range"
-            style={{ width: "100%" }}
+            style={{ width: "100%", position: "absolute", top: 10, left: 0 }}
           />
         </div>
 
@@ -1288,26 +1540,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
           {data.hubEnd}
         </span>
 
-        <span
-          className="text-caption font-mono"
-          style={{
-            color: "var(--accent)",
-            letterSpacing: 0.4,
-            flexShrink: 0,
-            minWidth: 78,
-            textAlign: "right",
-            paddingLeft: 6,
-            borderLeft: "1px solid var(--border-dim)",
-          }}
-          title="Current cursor date"
-        >
-          {sliderDate || data.hubEnd}
-        </span>
-
-        <GalaxyButton onClick={handleRecentre} title="Recentre / fit to view">
-          <Maximize2 width={12} height={12} />
-          <span>Fit</span>
-        </GalaxyButton>
         <GalaxyButton
           primary
           active={playing}
