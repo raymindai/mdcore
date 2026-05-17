@@ -1,28 +1,28 @@
 "use client";
 
-// Hub Galaxy — pure SVG cosmos.
+// Hub Galaxy — pure SVG cosmos, styled to match mdfy.app design tokens.
+//
+// Chrome (header / sidebar / detail panel / slider) uses mdfy CSS vars
+// (--background, --surface, --border, --text-*, --accent), forced to
+// dark theme so the cosmos canvas reads consistent regardless of the
+// user's site theme.
+//
+// Canvas (sky) uses hand-picked hex values because SVG gradients need
+// explicit colours that interpolate to opacity-0 cleanly. The palette
+// stays inside mdfy's warm zinc + orange family.
 //
 // Why SVG (and not xyflow): xyflow renders each node as an HTML div,
 // which means anything with a radial gradient ends up boxed in a
 // rectangular container with a hard alpha edge — looks like a "dark
 // border" the moment you zoom in. SVG circles + <feGaussianBlur>
-// filters give us real cinematic glow that fades smoothly into the
-// dark cosmos, and edges become visible coloured threads instead of
-// hairline strokes.
+// filters give us real glow that fades smoothly into the cosmos, and
+// edges become visible threads instead of hairline strokes.
 //
 // API:  GET /api/user/hub/constellation  (owner-only)
-// Auth: handled by GalaxyClient — we just pass headers through.
-//
-// Anti-patterns we avoid (per claude memory
-// `start_growing_hub_concept_2026_05`):
-//   - No gamification / badges
-//   - No social comparison
-//   - No "you broke your streak" shame
-// The galaxy is visceral by intent — labels appear, things glow,
-// connections light up — not a scorecard.
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import { Play, Pause, Maximize2 } from "lucide-react";
 import ELK from "elkjs/lib/elk.bundled.js";
 
 interface ApiNode {
@@ -64,49 +64,35 @@ interface Props {
   authHeaders: Record<string, string>;
 }
 
-// Hard-coded cosmos palette — keeps /galaxy on-brand with mdfy.app
-// (warm zinc + orange). No cyan / purple / pink anywhere; cool hues
-// belong in other products. A galaxy is a place, not a UI surface.
-const COSMOS = {
-  bg: "#0a0908",
+// Canvas-only colours (SVG gradients need explicit hex for stops).
+// All inside mdfy's warm zinc+orange family — no cyan/purple/pink.
+const SKY = {
+  bg: "#09090b",
   bgGradient:
-    "radial-gradient(ellipse at 30% 18%, #1a1410 0%, #0e0a07 40%, #060403 78%)",
-  text: "#f5f4ef",
-  textMuted: "#a8a29e",
-  textFaint: "#57534e",
-  border: "rgba(245, 244, 239, 0.07)",
-  // Star colours by kind — kept inside a warm zinc+orange spectrum.
-  // Variation comes from saturation, not hue.
-  starDoc: "#f5f4ef",     // warm white — main sequence
-  starConcept: "#fb923c", // mdfy accent orange — primary stars
-  starEntity: "#ea580c",  // deeper orange — proper nouns
-  starTag: "#c8a787",     // muted warm peach — meta labels
+    "radial-gradient(ellipse at 30% 18%, #1a1410 0%, #0e0a07 42%, #09090b 78%)",
+  starDoc: "#fafafa",      // warm white — main sequence
+  starConcept: "#fb923c",  // mdfy accent — primary stars
+  starEntity: "#ea580c",   // deeper orange — proper nouns
+  starTag: "#a8a29e",      // muted warm gray — meta labels
 };
 
-// Per-bundle nebula palette — orange/warm variants only. Each cluster
-// gets a different temperature inside the same warm family so bundles
-// read distinct without breaking the brand.
 const NEBULA_PALETTE = [
-  "#fb923c", // mdfy orange
-  "#ffb677", // light peach
-  "#d4a373", // sandy
-  "#b08968", // warm taupe
-  "#ffd5a5", // cream
-  "#ea580c", // deep orange
+  "#fb923c", "#ffb677", "#d4a373",
+  "#b08968", "#ffd5a5", "#ea580c",
 ];
 
 const KIND_ORDER: Array<ApiNode["kind"]> = ["concept", "entity", "tag", "doc"];
 
 function colourForKind(kind: ApiNode["kind"]): string {
-  if (kind === "entity") return COSMOS.starEntity;
-  if (kind === "tag") return COSMOS.starTag;
-  if (kind === "doc") return COSMOS.starDoc;
-  return COSMOS.starConcept;
+  if (kind === "entity") return SKY.starEntity;
+  if (kind === "tag") return SKY.starTag;
+  if (kind === "doc") return SKY.starDoc;
+  return SKY.starConcept;
 }
 function colourForBundle(bundleId: string | null | undefined, clusters: ApiCluster[]): string {
-  if (!bundleId) return COSMOS.starDoc;
+  if (!bundleId) return SKY.starDoc;
   const idx = clusters.findIndex((c) => c.id === bundleId);
-  return idx >= 0 ? NEBULA_PALETTE[idx % NEBULA_PALETTE.length] : COSMOS.starDoc;
+  return idx >= 0 ? NEBULA_PALETTE[idx % NEBULA_PALETTE.length] : SKY.starDoc;
 }
 
 interface Positioned {
@@ -114,8 +100,8 @@ interface Positioned {
   x: number;
   y: number;
   api: ApiNode;
-  size: number;        // base radius of the visible core
-  colour: string;      // star colour (kind for concepts, bundle hue for docs)
+  size: number;
+  colour: string;
   twinkleDelay: number;
 }
 
@@ -147,10 +133,6 @@ async function layoutGraph(nodes: ApiNode[], edges: ApiEdge[]): Promise<Map<stri
   return map;
 }
 
-// CSS keyframes — twinkle + four float patterns (assigned by idx % 4)
-// so stars drift on staggered orbits. Edges stay anchored to the
-// node's mathematical position, so the floats read as "stars breathe"
-// rather than "the whole graph wobbles." Injected once.
 function GalaxyKeyframes() {
   return (
     <style>{`
@@ -158,22 +140,10 @@ function GalaxyKeyframes() {
         0%, 100% { opacity: 0.7; }
         50% { opacity: 1; }
       }
-      @keyframes galaxyFloat0 {
-        0%, 100% { transform: translate(0, 0); }
-        50% { transform: translate(1.6px, -1.2px); }
-      }
-      @keyframes galaxyFloat1 {
-        0%, 100% { transform: translate(0, 0); }
-        50% { transform: translate(-1.4px, 1.4px); }
-      }
-      @keyframes galaxyFloat2 {
-        0%, 100% { transform: translate(0, 0); }
-        50% { transform: translate(0.8px, 1.6px); }
-      }
-      @keyframes galaxyFloat3 {
-        0%, 100% { transform: translate(0, 0); }
-        50% { transform: translate(-1.2px, -0.8px); }
-      }
+      @keyframes galaxyFloat0 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(1.6px, -1.2px); } }
+      @keyframes galaxyFloat1 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-1.4px, 1.4px); } }
+      @keyframes galaxyFloat2 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(0.8px, 1.6px); } }
+      @keyframes galaxyFloat3 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-1.2px, -0.8px); } }
       @keyframes galaxyNebulaDrift {
         0%, 100% { transform: translate(0, 0); }
         50% { transform: translate(6px, -8px); }
@@ -182,39 +152,94 @@ function GalaxyKeyframes() {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.08); }
       }
-      .galaxy-star {
-        transform-box: fill-box;
-        transform-origin: center;
-      }
-      .galaxy-input::placeholder { color: ${COSMOS.textFaint}; }
+      .galaxy-star { transform-box: fill-box; transform-origin: center; }
+
+      /* Range — match mdfy's accent. Track is a thin line under the
+         thumb; thumb is a small orange disc. */
       .galaxy-range {
         -webkit-appearance: none;
         appearance: none;
-        background: linear-gradient(to right, ${COSMOS.starTag}66 0%, ${COSMOS.starConcept}44 100%);
+        background: transparent;
+        height: 18px;
+        cursor: pointer;
+      }
+      .galaxy-range::-webkit-slider-runnable-track {
         height: 2px;
+        background: var(--border);
+        border-radius: 1px;
+      }
+      .galaxy-range::-moz-range-track {
+        height: 2px;
+        background: var(--border);
         border-radius: 1px;
       }
       .galaxy-range::-webkit-slider-thumb {
         -webkit-appearance: none;
         appearance: none;
+        margin-top: -5px;
         width: 12px;
         height: 12px;
         border-radius: 50%;
-        background: #ffffff;
-        box-shadow: 0 0 12px ${COSMOS.starTag}, 0 0 4px #ffffff;
-        cursor: pointer;
+        background: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-dim);
         border: none;
       }
       .galaxy-range::-moz-range-thumb {
         width: 12px;
         height: 12px;
         border-radius: 50%;
-        background: #ffffff;
-        box-shadow: 0 0 12px ${COSMOS.starTag};
-        cursor: pointer;
+        background: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-dim);
         border: none;
       }
     `}</style>
+  );
+}
+
+// Small button — matches the inline transparent-bordered buttons used
+// throughout MdEditor. Keep nudge-sized so a row of three fits the
+// slider bar tidily.
+function GalaxyButton({
+  active,
+  onClick,
+  children,
+  title,
+  primary,
+}: {
+  active?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  title?: string;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className="text-caption font-mono"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        height: 26,
+        padding: "0 10px",
+        background: primary
+          ? "var(--accent-dim)"
+          : active
+            ? "var(--toggle-bg)"
+            : "transparent",
+        color: primary || active ? "var(--accent)" : "var(--text-secondary)",
+        border: "1px solid",
+        borderColor: primary || active ? "var(--accent-dim)" : "var(--border)",
+        borderRadius: 6,
+        cursor: "pointer",
+        letterSpacing: 0.3,
+        transition: "background var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default), border-color var(--duration-fast) var(--ease-default)",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -230,7 +255,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
   const [visibleKinds, setVisibleKinds] = useState<Set<ApiNode["kind"]>>(
     () => new Set(KIND_ORDER),
   );
-  // View transform — pan + scale, applied to the world <g>.
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
   const [size, setSize] = useState({ w: 0, h: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -238,7 +262,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
   const playRef = useRef<number | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; viewX: number; viewY: number } | null>(null);
 
-  // Fetch data
+  // Fetch
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -278,7 +302,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
     return () => { cancelled = true; };
   }, [data]);
 
-  // Container size — fit-to-content needs to know the canvas size.
+  // Container size
   useEffect(() => {
     if (!containerRef.current) return;
     const el = containerRef.current;
@@ -290,7 +314,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
     return () => ro.disconnect();
   }, [loaded]);
 
-  // Positioned nodes (after layout). Stable across re-renders.
+  // Positioned nodes
   const all = useMemo<Positioned[]>(() => {
     if (!data || !positions) return [];
     return data.nodes.map((n, idx) => {
@@ -298,10 +322,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
       const colour = n.kind === "doc"
         ? colourForBundle(n.bundleId, data.clusters)
         : colourForKind(n.kind);
-      // Core radius — wider dynamic range so the big concepts read as
-      // giants, not as "slightly larger dots." sqrt curve so growth
-      // tapers off (a 50-occurrence concept isn't 5× the size of a
-      // 10-occurrence one — that would crowd the canvas).
+      // sqrt curve — big concepts read as giants without crowding.
       const occ = n.occurrence || 1;
       const size = n.kind === "doc"
         ? 1.6
@@ -318,8 +339,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
     });
   }, [data, positions]);
 
-  // Fit-to-view once layout + size are known.
-  // Only auto-fits once on initial load; user pan/zoom takes over after that.
+  // Initial fit
   const didFitRef = useRef(false);
   useEffect(() => {
     if (didFitRef.current) return;
@@ -341,7 +361,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
     didFitRef.current = true;
   }, [all, size]);
 
-  // Compute visible set (filter / search / slider applied).
   const apiMap = useMemo(() => {
     const m = new Map<string, ApiNode>();
     for (const n of data?.nodes || []) m.set(n.id, n);
@@ -366,14 +385,20 @@ export default function HubGalaxy({ authHeaders }: Props) {
         if (e.target === selectedId && visibleIds.has(e.source)) neighbours.add(e.source);
       }
     }
-    const nodes = all.filter((n) => visibleIds.has(n.id) && (!term || n.api.label.toLowerCase().includes(term) || selectedId === n.id || neighbours.has(n.id)));
+    const nodes = all.filter((n) =>
+      visibleIds.has(n.id) &&
+      (!term || n.api.label.toLowerCase().includes(term) || selectedId === n.id || neighbours.has(n.id)),
+    );
+    // Edges must filter against the *rendered* node set, not just
+    // kind-visible — otherwise search hides nodes but lines to them
+    // keep drawing, ending in mid-air.
+    const renderedIds = new Set(nodes.map((n) => n.id));
     const edges = data.edges.filter(
-      (e) => e.createdAt <= cutoff && visibleIds.has(e.source) && visibleIds.has(e.target),
+      (e) => e.createdAt <= cutoff && renderedIds.has(e.source) && renderedIds.has(e.target),
     );
     return { nodes, edges, neighbours };
   }, [data, all, sliderDate, visibleKinds, searchTerm, selectedId]);
 
-  // Nebula blobs — centroid of each bundle's doc nodes.
   const nebulae = useMemo<NebulaBlob[]>(() => {
     if (!data || all.length === 0) return [];
     const byBundle = new Map<string, Positioned[]>();
@@ -389,9 +414,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
       if (!members || members.length === 0) return;
       const cx = members.reduce((s, m) => s + m.x, 0) / members.length;
       const cy = members.reduce((s, m) => s + m.y, 0) / members.length;
-      // Radius grows gently with member count; clamped so big bundles
-      // don't drown the canvas. Pulled tighter than before — nebulae
-      // should suggest grouping, not dominate the scene.
       const radius = Math.min(260, 90 + members.length * 14);
       out.push({
         id: c.id,
@@ -404,7 +426,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
     return out;
   }, [data, all]);
 
-  // Replay animation
+  // Replay
   useEffect(() => {
     if (!playing || !data) return;
     const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
@@ -437,7 +459,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 
-  // Pan handlers
+  // Pan
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
     dragRef.current = {
@@ -447,56 +469,17 @@ export default function HubGalaxy({ authHeaders }: Props) {
       viewY: view.y,
     };
   }, [view.x, view.y]);
-
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
     setView((v) => ({ ...v, x: dragRef.current!.viewX + dx, y: dragRef.current!.viewY + dy }));
   }, []);
-
   const handleMouseUp = useCallback(() => {
     dragRef.current = null;
   }, []);
 
-  // Zoom on wheel, centred on cursor (so what's under the mouse stays put).
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (!svgRef.current) return;
-    e.preventDefault();
-    const rect = svgRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    setView((v) => {
-      const delta = -e.deltaY * 0.0014;
-      const newK = Math.max(0.2, Math.min(4, v.k * (1 + delta)));
-      const x = mx - (mx - v.x) * (newK / v.k);
-      const y = my - (my - v.y) * (newK / v.k);
-      return { x, y, k: newK };
-    });
-  }, []);
-
-  // Recentre / refit
-  const handleRecentre = useCallback(() => {
-    if (visible.nodes.length === 0 || size.w === 0) return;
-    const xs = visible.nodes.map((n) => n.x);
-    const ys = visible.nodes.map((n) => n.y);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    const bbW = Math.max(1, maxX - minX);
-    const bbH = Math.max(1, maxY - minY);
-    const margin = 80;
-    const k = Math.min((size.w - margin * 2) / bbW, (size.h - margin * 2) / bbH);
-    const clampedK = Math.max(0.2, Math.min(3, k));
-    const x = size.w / 2 - (minX + bbW / 2) * clampedK;
-    const y = size.h / 2 - (minY + bbH / 2) * clampedK;
-    setView({ x, y, k: clampedK });
-  }, [visible.nodes, size]);
-
-  // Native wheel listener — React's synthetic wheel is passive by default,
-  // so preventDefault inside it gets ignored and the page scrolls instead
-  // of zooming. Attach with passive:false.
+  // Native wheel — React's wheel is passive, can't preventDefault.
   useEffect(() => {
     const el = svgRef.current;
     if (!el) return;
@@ -517,7 +500,24 @@ export default function HubGalaxy({ authHeaders }: Props) {
     return () => el.removeEventListener("wheel", onWheel);
   }, []);
 
-  // Selection + linked docs for detail panel
+  const handleRecentre = useCallback(() => {
+    if (visible.nodes.length === 0 || size.w === 0) return;
+    const xs = visible.nodes.map((n) => n.x);
+    const ys = visible.nodes.map((n) => n.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const bbW = Math.max(1, maxX - minX);
+    const bbH = Math.max(1, maxY - minY);
+    const margin = 80;
+    const k = Math.min((size.w - margin * 2) / bbW, (size.h - margin * 2) / bbH);
+    const clampedK = Math.max(0.2, Math.min(3, k));
+    const x = size.w / 2 - (minX + bbW / 2) * clampedK;
+    const y = size.h / 2 - (minY + bbH / 2) * clampedK;
+    setView({ x, y, k: clampedK });
+  }, [visible.nodes, size]);
+
   const selected = selectedId ? apiMap.get(selectedId) : null;
   const linkedDocs = useMemo(() => {
     if (!selected || !data) return [];
@@ -528,21 +528,43 @@ export default function HubGalaxy({ authHeaders }: Props) {
       .slice(0, 12);
   }, [selected, data, apiMap]);
 
-  // Shared cosmos wrap for loading / auth / empty states.
+  // Slider position helpers
+  const sliderPct = useMemo(() => {
+    if (!data) return 0;
+    const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
+    const endMs = new Date(data.hubEnd + "T00:00:00Z").getTime();
+    const curMs = new Date((sliderDate || data.hubEnd) + "T00:00:00Z").getTime();
+    const total = Math.max(1, endMs - startMs);
+    return Math.max(0, Math.min(1, (curMs - startMs) / total));
+  }, [data, sliderDate]);
+
+  const todayPct = useMemo(() => {
+    if (!data) return null;
+    const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
+    const endMs = new Date(data.hubEnd + "T00:00:00Z").getTime();
+    const todayMs = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z").getTime();
+    if (todayMs < startMs || todayMs > endMs) return null;
+    const total = Math.max(1, endMs - startMs);
+    return (todayMs - startMs) / total;
+  }, [data]);
+
+  // Wrap forces dark theme so mdfy CSS vars resolve to dark values
+  // regardless of the user's site theme. The canvas itself is always
+  // dark — it's the cosmos.
   const cosmosWrap: React.CSSProperties = {
     height: "100vh",
-    background: COSMOS.bg,
-    backgroundImage: COSMOS.bgGradient,
-    color: COSMOS.text,
+    background: SKY.bg,
+    backgroundImage: SKY.bgGradient,
+    color: "var(--text-primary)",
     position: "relative",
     overflow: "hidden",
   };
 
   if (!loaded) {
     return (
-      <div style={{ ...cosmosWrap, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div data-theme="dark" style={{ ...cosmosWrap, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <GalaxyKeyframes />
-        <span className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: 2, color: COSMOS.textMuted }}>
+        <span className="text-caption font-mono uppercase" style={{ letterSpacing: 1.5, color: "var(--text-muted)" }}>
           Locating galaxy…
         </span>
       </div>
@@ -550,10 +572,22 @@ export default function HubGalaxy({ authHeaders }: Props) {
   }
   if (error === "auth") {
     return (
-      <div style={{ ...cosmosWrap, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+      <div data-theme="dark" style={{ ...cosmosWrap, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
         <GalaxyKeyframes />
-        <p style={{ color: COSMOS.textMuted, fontSize: 14 }}>Sign in to see your galaxy.</p>
-        <Link href="/" style={{ background: COSMOS.starTag, color: "#000", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontSize: 14, fontWeight: 600, boxShadow: `0 0 24px ${COSMOS.starTag}55` }}>
+        <p className="text-body" style={{ color: "var(--text-secondary)" }}>Sign in to see your galaxy.</p>
+        <Link
+          href="/"
+          className="text-caption font-mono"
+          style={{
+            background: "var(--accent)",
+            color: "var(--background)",
+            padding: "8px 16px",
+            borderRadius: 6,
+            textDecoration: "none",
+            fontWeight: 600,
+            letterSpacing: 0.3,
+          }}
+        >
           Go to mdfy.app
         </Link>
       </div>
@@ -561,12 +595,24 @@ export default function HubGalaxy({ authHeaders }: Props) {
   }
   if (!data || data.nodes.length === 0) {
     return (
-      <div style={{ ...cosmosWrap, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+      <div data-theme="dark" style={{ ...cosmosWrap, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
         <GalaxyKeyframes />
-        <p style={{ color: COSMOS.textMuted, fontSize: 14, maxWidth: 360, textAlign: "center", lineHeight: 1.55 }}>
+        <p className="text-body" style={{ color: "var(--text-secondary)", maxWidth: 360, textAlign: "center", lineHeight: 1.6 }}>
           Your galaxy is empty so far. Capture a few docs and let analysis run — concepts and connections will appear here as stars.
         </p>
-        <Link href="/" style={{ background: COSMOS.starTag, color: "#000", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontSize: 14, fontWeight: 600, boxShadow: `0 0 24px ${COSMOS.starTag}55` }}>
+        <Link
+          href="/"
+          className="text-caption font-mono"
+          style={{
+            background: "var(--accent)",
+            color: "var(--background)",
+            padding: "8px 16px",
+            borderRadius: 6,
+            textDecoration: "none",
+            fontWeight: 600,
+            letterSpacing: 0.3,
+          }}
+        >
           Back to editor
         </Link>
       </div>
@@ -578,110 +624,75 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
   return (
     <div
+      data-theme="dark"
       style={{
         height: "100vh",
         display: "flex",
         flexDirection: "column",
-        background: COSMOS.bg,
-        backgroundImage: COSMOS.bgGradient,
-        color: COSMOS.text,
+        background: SKY.bg,
+        backgroundImage: SKY.bgGradient,
+        color: "var(--text-primary)",
         position: "relative",
         overflow: "hidden",
       }}
     >
       <GalaxyKeyframes />
 
-      {/* Header */}
-      <div
+      {/* Header — minimal, mdfy-style: back link, brand, counts. */}
+      <header
         style={{
-          height: 48,
+          height: 40,
           display: "flex",
           alignItems: "center",
           padding: "0 16px",
-          borderBottom: `1px solid ${COSMOS.border}`,
+          borderBottom: "1px solid var(--border-dim)",
           gap: 16,
           flexShrink: 0,
-          background: "rgba(3, 4, 10, 0.55)",
-          backdropFilter: "blur(8px)",
-          zIndex: 2,
+          background: "var(--header-bg)",
+          backdropFilter: "blur(12px)",
+          zIndex: 3,
         }}
       >
-        <Link href="/" style={{ color: COSMOS.textMuted, textDecoration: "none", fontSize: 13 }}>
+        <Link
+          href="/"
+          className="text-caption"
+          style={{ color: "var(--text-muted)", textDecoration: "none" }}
+        >
           ← Back
         </Link>
         <span
-          className="font-mono uppercase"
-          style={{ fontSize: 10, letterSpacing: 2, color: COSMOS.text, textShadow: `0 0 8px ${COSMOS.starTag}55` }}
+          className="text-caption font-mono uppercase"
+          style={{ color: "var(--text-primary)", letterSpacing: 1.5, fontWeight: 600 }}
         >
           Galaxy
         </span>
-        <span
-          className="font-mono"
-          style={{ fontSize: 10, color: COSMOS.textFaint, letterSpacing: 0.5 }}
-        >
+        <span className="text-caption font-mono" style={{ color: "var(--text-faint)", letterSpacing: 0.3 }}>
           {data.counts.nodes} stars / {data.clusters.length} nebulae
         </span>
-        <span style={{ flex: 1 }} />
-        <button
-          onClick={handleRecentre}
-          style={{
-            background: "transparent",
-            color: COSMOS.textMuted,
-            border: `1px solid ${COSMOS.border}`,
-            borderRadius: 6,
-            padding: "5px 12px",
-            fontSize: 11,
-            cursor: "pointer",
-            letterSpacing: 0.5,
-            textTransform: "uppercase",
-            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-          }}
-        >
-          Recentre
-        </button>
-        <button
-          onClick={() => {
-            if (playing) { setPlaying(false); return; }
-            setSliderDate(data.hubStart);
-            setPlaying(true);
-          }}
-          style={{
-            background: playing ? `${COSMOS.starTag}22` : "rgba(11, 15, 36, 0.6)",
-            color: playing ? COSMOS.starTag : COSMOS.text,
-            border: `1px solid ${playing ? COSMOS.starTag + "66" : COSMOS.border}`,
-            borderRadius: 6,
-            padding: "5px 14px",
-            fontSize: 11,
-            cursor: "pointer",
-            letterSpacing: 0.5,
-            textTransform: "uppercase",
-            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-            boxShadow: playing ? `0 0 12px ${COSMOS.starTag}33` : "none",
-          }}
-        >
-          {playing ? "Pause" : "Replay growth"}
-        </button>
-      </div>
+      </header>
 
       {/* Body */}
       <div style={{ flex: 1, display: "flex", minHeight: 0, position: "relative", zIndex: 1 }}>
-        {/* Left sidebar */}
+        {/* Sidebar */}
         <aside
           style={{
             width: 220,
-            borderRight: `1px solid ${COSMOS.border}`,
+            borderRight: "1px solid var(--border-dim)",
             padding: "16px 14px",
             display: "flex",
             flexDirection: "column",
             gap: 18,
             overflowY: "auto",
             flexShrink: 0,
-            background: "rgba(3, 4, 10, 0.5)",
+            background: "color-mix(in srgb, var(--background) 70%, transparent 30%)",
             backdropFilter: "blur(8px)",
           }}
         >
           <div>
-            <label className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 1, color: COSMOS.textFaint, display: "block", marginBottom: 6 }}>
+            <label
+              className="text-caption font-mono uppercase"
+              style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}
+            >
               Search
             </label>
             <input
@@ -689,26 +700,27 @@ export default function HubGalaxy({ authHeaders }: Props) {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="filter by label"
-              className="galaxy-input"
+              className="text-body font-mono"
               style={{
                 width: "100%",
-                background: "rgba(11, 15, 36, 0.6)",
-                border: `1px solid ${COSMOS.border}`,
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
                 borderRadius: 6,
                 padding: "6px 10px",
-                color: COSMOS.text,
-                fontSize: 12,
+                color: "var(--text-primary)",
                 outline: "none",
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
               }}
             />
           </div>
 
           <div>
-            <label className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 1, color: COSMOS.textFaint, display: "block", marginBottom: 6 }}>
+            <label
+              className="text-caption font-mono uppercase"
+              style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}
+            >
               Star kinds
             </label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {KIND_ORDER.map((k) => {
                 const active = visibleKinds.has(k);
                 const c = colourForKind(k);
@@ -721,29 +733,30 @@ export default function HubGalaxy({ authHeaders }: Props) {
                       else next.add(k);
                       setVisibleKinds(next);
                     }}
+                    className="text-caption"
                     style={{
-                      background: active ? "rgba(11, 15, 36, 0.7)" : "transparent",
-                      color: active ? COSMOS.text : COSMOS.textFaint,
-                      border: `1px solid ${active ? c + "44" : COSMOS.border}`,
+                      background: active ? "var(--toggle-bg)" : "transparent",
+                      color: active ? "var(--text-primary)" : "var(--text-faint)",
+                      border: "1px solid var(--border-dim)",
                       borderRadius: 6,
                       padding: "5px 10px",
-                      fontSize: 12,
                       textAlign: "left",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       gap: 8,
-                      transition: "border 0.15s ease, background 0.15s ease",
+                      transition: "background var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default)",
                     }}
                   >
                     <span
                       style={{
-                        width: 9,
-                        height: 9,
+                        width: 8,
+                        height: 8,
                         borderRadius: "50%",
                         background: `radial-gradient(circle, #fff 0%, ${c} 50%, transparent 100%)`,
-                        boxShadow: active ? `0 0 8px ${c}aa` : "none",
-                        opacity: active ? 1 : 0.35,
+                        boxShadow: active ? `0 0 6px ${c}aa` : "none",
+                        opacity: active ? 1 : 0.4,
+                        flexShrink: 0,
                       }}
                     />
                     <span style={{ flex: 1, textTransform: "capitalize" }}>{k}</span>
@@ -755,7 +768,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
           {data.clusters.length > 0 && (
             <div>
-              <label className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 1, color: COSMOS.textFaint, display: "block", marginBottom: 6 }}>
+              <label
+                className="text-caption font-mono uppercase"
+                style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}
+              >
                 Nebulae
               </label>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -765,16 +781,17 @@ export default function HubGalaxy({ authHeaders }: Props) {
                     <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 0" }}>
                       <span
                         style={{
-                          width: 18,
-                          height: 6,
-                          borderRadius: 3,
-                          background: `linear-gradient(to right, ${colour}cc, ${colour}33)`,
-                          boxShadow: `0 0 6px ${colour}66`,
+                          width: 16,
+                          height: 4,
+                          borderRadius: 2,
+                          background: `linear-gradient(to right, ${colour}, ${colour}33)`,
+                          boxShadow: `0 0 6px ${colour}55`,
                           flexShrink: 0,
                         }}
                       />
                       <span
-                        style={{ fontSize: 11, color: COSMOS.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                        className="text-caption"
+                        style={{ color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                         title={c.label}
                       >
                         {c.label}
@@ -783,7 +800,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
                   );
                 })}
                 {data.clusters.length > 8 && (
-                  <span style={{ fontSize: 10, color: COSMOS.textFaint, paddingTop: 2 }}>
+                  <span className="text-caption font-mono" style={{ color: "var(--text-faint)", paddingTop: 2 }}>
                     +{data.clusters.length - 8} more
                   </span>
                 )}
@@ -791,23 +808,23 @@ export default function HubGalaxy({ authHeaders }: Props) {
             </div>
           )}
 
-          <div style={{ borderTop: `1px solid ${COSMOS.border}`, paddingTop: 12, marginTop: "auto" }}>
-            <p className="font-mono" style={{ color: COSMOS.textMuted, lineHeight: 1.7, margin: 0, fontSize: 10, letterSpacing: 0.3 }}>
-              <span style={{ color: COSMOS.text }}>{visible.nodes.length}</span>
+          <div style={{ borderTop: "1px solid var(--border-dim)", paddingTop: 12, marginTop: "auto" }}>
+            <p className="text-caption font-mono" style={{ color: "var(--text-muted)", lineHeight: 1.7, margin: 0, letterSpacing: 0.3 }}>
+              <span style={{ color: "var(--text-primary)" }}>{visible.nodes.length}</span>
               {" / "}
-              {data.nodes.length} visible stars
+              {data.nodes.length} stars
               <br />
-              <span style={{ color: COSMOS.text }}>{visible.edges.length}</span>
+              <span style={{ color: "var(--text-primary)" }}>{visible.edges.length}</span>
               {" / "}
               {data.edges.length} threads
             </p>
             {(data.counts.cappedConcepts || data.counts.cappedDocs) && (
-              <p style={{ color: COSMOS.textFaint, marginTop: 8, lineHeight: 1.5, fontSize: 10 }}>
+              <p className="text-caption" style={{ color: "var(--text-faint)", marginTop: 8, lineHeight: 1.5 }}>
                 Capped at top 200 concepts / 200 most-recent docs.
               </p>
             )}
-            <p style={{ color: COSMOS.textFaint, marginTop: 10, fontSize: 10, lineHeight: 1.5 }}>
-              Drag to pan · scroll to zoom
+            <p className="text-caption font-mono" style={{ color: "var(--text-faint)", marginTop: 10, lineHeight: 1.5, letterSpacing: 0.3 }}>
+              drag to pan / scroll to zoom
             </p>
           </div>
         </aside>
@@ -825,14 +842,12 @@ export default function HubGalaxy({ authHeaders }: Props) {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            onWheel={handleWheel}
             onClick={(e) => {
               if (e.target === svgRef.current) setSelectedId(null);
             }}
             style={{ display: "block" }}
           >
             <defs>
-              {/* Soft glow for the core white dot — turns the pinpoint into a star */}
               <filter id="glow-core" x="-200%" y="-200%" width="500%" height="500%">
                 <feGaussianBlur stdDeviation="1.4" result="b1" />
                 <feMerge>
@@ -847,11 +862,9 @@ export default function HubGalaxy({ authHeaders }: Props) {
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
-              {/* Big soft blur for nebula clouds */}
               <filter id="nebula-blur" x="-50%" y="-50%" width="200%" height="200%">
                 <feGaussianBlur stdDeviation="32" />
               </filter>
-              {/* Edge glow for selected paths */}
               <filter id="thread-glow" x="-50%" y="-50%" width="200%" height="200%">
                 <feGaussianBlur stdDeviation="2" result="b1" />
                 <feMerge>
@@ -860,7 +873,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 </feMerge>
               </filter>
 
-              {/* Per-kind halo gradient — fades all the way to transparent */}
               {(["doc", "concept", "entity", "tag"] as const).map((k) => {
                 const c = colourForKind(k);
                 return (
@@ -873,7 +885,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 );
               })}
 
-              {/* Per-bundle doc halo — uses bundle hue instead of kind */}
               {nebulae.map((b) => (
                 <radialGradient key={`doc-${b.id}`} id={`halo-doc-${b.id}`}>
                   <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
@@ -883,8 +894,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 </radialGradient>
               ))}
 
-              {/* Nebula cloud gradients — softer than before so they
-                  hint at clustering instead of competing with stars. */}
               {nebulae.map((b) => (
                 <radialGradient key={`neb-${b.id}`} id={`neb-${b.id}`}>
                   <stop offset="0%" stopColor={b.colour} stopOpacity="0.22" />
@@ -894,14 +903,8 @@ export default function HubGalaxy({ authHeaders }: Props) {
               ))}
             </defs>
 
-            {/* World group — all coordinates are in flow-space, transformed
-                by the view (pan + zoom). */}
             <g transform={`translate(${view.x}, ${view.y}) scale(${view.k})`}>
-              {/* Layer 1: nebulae (screen-blended so they brighten the
-                  bg without darkening anything). Pre-blurred via SVG
-                  filter. Each cloud drifts on its own slow period —
-                  that's the "stuff is happening" cue even when nothing
-                  is selected. */}
+              {/* Nebulae */}
               <g style={{ mixBlendMode: "screen" }}>
                 {nebulae.map((b, idx) => (
                   <circle
@@ -920,11 +923,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 ))}
               </g>
 
-              {/* Layer 2: edges as gentle bezier curves. Render below
-                  nodes so stars sit on top of their connections.
-                  Default opacity is intentionally near-invisible — the
-                  full graph reads as a soft web; selection lights up
-                  just the relevant path. */}
+              {/* Edges — gentle bezier curves */}
               <g>
                 {visible.edges.map((e) => {
                   const a = positions?.get(e.source);
@@ -932,8 +931,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
                   if (!a || !b) return null;
                   const isSelectedEnd = selectedId !== null && (e.source === selectedId || e.target === selectedId);
                   const anyDimmer = selectedId !== null || searchActive;
-                  // Deterministic curve direction per edge so the
-                  // network isn't visually thrashed across re-renders.
                   let h = 0;
                   for (let i = 0; i < e.id.length; i++) h = ((h << 5) - h + e.id.charCodeAt(i)) | 0;
                   const dx = b.x - a.x;
@@ -941,7 +938,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
                   const len = Math.sqrt(dx * dx + dy * dy) || 1;
                   const sign = (h & 1) ? 1 : -1;
                   const bend = Math.min(60, len * 0.18) * sign;
-                  // Perpendicular vector for control-point offset.
                   const cx = (a.x + b.x) / 2 + (-dy / len) * bend;
                   const cy = (a.y + b.y) / 2 + (dx / len) * bend;
                   const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
@@ -950,7 +946,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
                       key={e.id}
                       d={d}
                       fill="none"
-                      stroke={isSelectedEnd ? COSMOS.starConcept : COSMOS.text}
+                      stroke={isSelectedEnd ? SKY.starConcept : "#fafafa"}
                       strokeOpacity={
                         isSelectedEnd
                           ? 0.65
@@ -966,36 +962,22 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 })}
               </g>
 
-              {/* Layer 3: stars. Each star gets one of four float
-                  keyframes so the field "breathes" on different
-                  phases — that's the position-based animation. The
-                  edges deliberately don't follow (stars float ±1.5px,
-                  far below their gap to neighbours), which keeps the
-                  layout stable while the cosmos feels alive. */}
+              {/* Stars */}
               <g>
                 {visible.nodes.map((n, idx) => {
                   const matched = !searchActive || n.api.label.toLowerCase().includes(term);
                   const isSelected = n.id === selectedId;
                   const isNeighbour = visible.neighbours.has(n.id);
-                  // Dim hard: anything not part of the current focus
-                  // (selection, neighbours, search match) drops far down.
                   const focusing = selectedId !== null || searchActive;
                   const inFocus = isSelected || isNeighbour || (searchActive && matched);
                   const dimmed = focusing && !inFocus;
-                  // Halo radius — relative to core size, big enough for
-                  // the gradient to fade nicely without rectangular edges
-                  // (which is exactly why we left HTML behind).
                   const haloR = n.size * (isSelected ? 7 : 4.5);
                   const coreR = n.size * (isSelected ? 1.5 : 1);
                   const haloFill =
                     n.api.kind === "doc" && n.api.bundleId
                       ? `url(#halo-doc-${n.api.bundleId})`
                       : `url(#halo-${n.api.kind})`;
-                  // Label visibility: at zoom >= 1.4, or always for selected / neighbour / search-match.
-                  const showLabel =
-                    isSelected || isNeighbour || (searchActive && matched) || view.k >= 1.4;
-                  // Stagger float animations — period 7-13s so the
-                  // whole field doesn't pulse in lockstep.
+                  const showLabel = isSelected || isNeighbour || (searchActive && matched) || view.k >= 1.4;
                   const floatIdx = idx % 4;
                   const period = 7 + (idx % 7);
                   return (
@@ -1019,8 +1001,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
                           animationDelay: `-${n.twinkleDelay * 1.2}s`,
                         }}
                       >
-                        {/* Halo — pure gradient circle, no border because
-                            the gradient fades to opacity 0. */}
                         <circle
                           r={haloR}
                           fill={haloFill}
@@ -1029,12 +1009,9 @@ export default function HubGalaxy({ authHeaders }: Props) {
                             animationDelay: `-${n.twinkleDelay}s`,
                           }}
                         />
-                        {/* Core — bright pinpoint, blurred by SVG
-                            filter for the actual "star" feel. Selected
-                            stars also pulse to draw the eye. */}
                         <circle
                           r={coreR}
-                          fill={COSMOS.text}
+                          fill="#fafafa"
                           filter={isSelected ? "url(#glow-core-strong)" : "url(#glow-core)"}
                           style={isSelected ? {
                             animation: `galaxyPulse 2.4s ease-in-out infinite`,
@@ -1049,15 +1026,15 @@ export default function HubGalaxy({ authHeaders }: Props) {
                           textAnchor="middle"
                           style={{
                             fontSize: 10 / Math.max(0.6, view.k * 0.7),
-                            fill: COSMOS.text,
-                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                            fill: "#fafafa",
+                            fontFamily: "ui-monospace, 'JetBrains Mono', 'Fira Code', monospace",
                             letterSpacing: 0.3,
                             pointerEvents: "none",
                             paintOrder: "stroke",
-                            stroke: "rgba(10, 9, 8, 0.85)",
+                            stroke: "rgba(9, 9, 11, 0.85)",
                             strokeWidth: 3 / Math.max(0.6, view.k * 0.7),
                             strokeLinejoin: "round",
-                            opacity: dimmed ? 0 : 0.85,
+                            opacity: dimmed ? 0 : 0.9,
                           }}
                         >
                           {n.api.label}
@@ -1076,30 +1053,30 @@ export default function HubGalaxy({ authHeaders }: Props) {
           <aside
             style={{
               width: 320,
-              borderLeft: `1px solid ${COSMOS.border}`,
+              borderLeft: "1px solid var(--border-dim)",
               padding: "18px 18px 22px",
               display: "flex",
               flexDirection: "column",
               gap: 14,
               overflowY: "auto",
               flexShrink: 0,
-              background: "rgba(3, 4, 10, 0.72)",
+              background: "color-mix(in srgb, var(--background) 80%, transparent 20%)",
               backdropFilter: "blur(10px)",
             }}
           >
-            <div className="flex items-baseline gap-2">
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
               <span
-                className="font-mono uppercase"
+                className="text-caption font-mono uppercase"
                 style={{
-                  fontSize: 9,
-                  letterSpacing: 1.2,
                   color: colourForKind(selected.kind),
-                  textShadow: `0 0 6px currentColor`,
+                  letterSpacing: 1,
+                  fontWeight: 600,
+                  textShadow: `0 0 6px ${colourForKind(selected.kind)}55`,
                 }}
               >
                 {selected.kind}
               </span>
-              <span className="font-mono" style={{ color: COSMOS.textFaint, fontSize: 10 }}>
+              <span className="text-caption font-mono" style={{ color: "var(--text-faint)" }}>
                 {selected.createdAt.slice(0, 10)}
               </span>
               <span style={{ flex: 1 }} />
@@ -1108,7 +1085,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 style={{
                   background: "transparent",
                   border: "none",
-                  color: COSMOS.textFaint,
+                  color: "var(--text-faint)",
                   cursor: "pointer",
                   fontSize: 18,
                   lineHeight: 1,
@@ -1120,26 +1097,29 @@ export default function HubGalaxy({ authHeaders }: Props) {
               </button>
             </div>
 
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: COSMOS.text, lineHeight: 1.3, letterSpacing: 0.2 }}>
+            <h3 className="text-heading" style={{ margin: 0, color: "var(--text-primary)", lineHeight: 1.3 }}>
               {selected.label}
             </h3>
 
             {selected.description && (
-              <p style={{ color: COSMOS.textMuted, lineHeight: 1.55, margin: 0, fontSize: 13 }}>
+              <p className="text-body" style={{ color: "var(--text-secondary)", lineHeight: 1.55, margin: 0 }}>
                 {selected.description}
               </p>
             )}
 
             {selected.kind !== "doc" && (selected.occurrence || 0) > 0 && (
-              <p style={{ color: COSMOS.textFaint, margin: 0, fontSize: 12 }}>
-                magnitude {selected.occurrence} (mentioned in {(selected.docIds || []).length}{" "}
+              <p className="text-caption" style={{ color: "var(--text-faint)", margin: 0 }}>
+                magnitude {selected.occurrence} (in {(selected.docIds || []).length}{" "}
                 {(selected.docIds || []).length === 1 ? "doc" : "docs"})
               </p>
             )}
 
             {linkedDocs.length > 0 && (
               <div>
-                <label className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 1, color: COSMOS.textFaint, display: "block", marginBottom: 6 }}>
+                <label
+                  className="text-caption font-mono uppercase"
+                  style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}
+                >
                   Anchored to
                 </label>
                 <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
@@ -1151,13 +1131,13 @@ export default function HubGalaxy({ authHeaders }: Props) {
                           href={`/${id}`}
                           target="_blank"
                           rel="noopener noreferrer"
+                          className="text-body"
                           style={{
-                            color: COSMOS.text,
+                            color: "var(--text-primary)",
                             textDecoration: "none",
                             display: "block",
-                            padding: "4px 0",
-                            fontSize: 12,
-                            borderBottom: `1px solid ${COSMOS.border}`,
+                            padding: "5px 0",
+                            borderBottom: "1px solid var(--border-dim)",
                           }}
                         >
                           {d.label}
@@ -1174,13 +1154,8 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 href={`/${selected.id.startsWith("doc:") ? selected.id.slice(4) : selected.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{
-                  color: COSMOS.starTag,
-                  textDecoration: "none",
-                  fontSize: 13,
-                  marginTop: 2,
-                  textShadow: `0 0 6px ${COSMOS.starTag}55`,
-                }}
+                className="text-body"
+                style={{ color: "var(--accent)", textDecoration: "none", marginTop: 2 }}
               >
                 Open document →
               </a>
@@ -1188,8 +1163,11 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
             {visible.neighbours.size > 0 && (
               <div>
-                <label className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: 1, color: COSMOS.textFaint, display: "block", marginBottom: 6 }}>
-                  Connected stars
+                <label
+                  className="text-caption font-mono uppercase"
+                  style={{ color: "var(--text-faint)", display: "block", marginBottom: 6, letterSpacing: 0.5 }}
+                >
+                  Connected
                 </label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {Array.from(visible.neighbours)
@@ -1202,15 +1180,14 @@ export default function HubGalaxy({ authHeaders }: Props) {
                         <button
                           key={n.id}
                           onClick={() => setSelectedId(n.id)}
+                          className="text-caption font-mono"
                           style={{
-                            background: "rgba(11, 15, 36, 0.6)",
-                            color: COSMOS.text,
-                            border: `1px solid ${c}44`,
+                            background: "var(--surface)",
+                            color: "var(--text-primary)",
+                            border: `1px solid ${c}33`,
                             borderRadius: 4,
                             padding: "3px 8px",
                             cursor: "pointer",
-                            fontSize: 11,
-                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
                           }}
                         >
                           {n.label}
@@ -1224,60 +1201,127 @@ export default function HubGalaxy({ authHeaders }: Props) {
         )}
       </div>
 
-      {/* Bottom: time slider */}
-      <div
+      {/* Bottom: time scrubber.
+          Layout — [start] [scrubber w/ today marker] [end] [today date / cursor date] [recentre] [play/pause].
+          Today marker is a vertical orange line on the track at the
+          position where today's date sits in the hub's lifetime. */}
+      <footer
         style={{
-          height: 48,
+          height: 44,
           display: "flex",
           alignItems: "center",
-          padding: "0 20px",
-          borderTop: `1px solid ${COSMOS.border}`,
-          gap: 14,
+          padding: "0 14px",
+          borderTop: "1px solid var(--border-dim)",
+          gap: 12,
           flexShrink: 0,
-          background: "rgba(3, 4, 10, 0.55)",
-          backdropFilter: "blur(8px)",
-          zIndex: 2,
+          background: "var(--header-bg)",
+          backdropFilter: "blur(12px)",
+          zIndex: 3,
         }}
       >
-        <span className="font-mono" style={{ color: COSMOS.textFaint, fontSize: 10, letterSpacing: 0.5, flexShrink: 0 }}>
+        <span
+          className="text-caption font-mono"
+          style={{ color: "var(--text-faint)", letterSpacing: 0.3, flexShrink: 0, minWidth: 78 }}
+        >
           {data.hubStart}
         </span>
-        <input
-          type="range"
-          min={0}
-          max={1000}
-          value={(() => {
-            const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
-            const endMs = new Date(data.hubEnd + "T00:00:00Z").getTime();
-            const curMs = new Date((sliderDate || data.hubEnd) + "T00:00:00Z").getTime();
-            const total = Math.max(1, endMs - startMs);
-            return Math.round(((curMs - startMs) / total) * 1000);
-          })()}
-          onChange={(e) => {
-            const v = Number(e.target.value) / 1000;
-            const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
-            const endMs = new Date(data.hubEnd + "T00:00:00Z").getTime();
-            const target = startMs + (endMs - startMs) * v;
-            setPlaying(false);
-            setSliderDate(new Date(target).toISOString().slice(0, 10));
-          }}
-          className="galaxy-range"
-          style={{ flex: 1, cursor: "pointer" }}
-        />
+
+        {/* Scrubber wrapper — holds the input plus an absolute "today" marker. */}
+        <div style={{ flex: 1, position: "relative", height: 18, display: "flex", alignItems: "center" }}>
+          {todayPct !== null && (
+            <>
+              {/* Today vertical marker — calculated against the same
+                  startMs..endMs range as the slider thumb. */}
+              <div
+                title={`Today · ${new Date().toISOString().slice(0, 10)}`}
+                style={{
+                  position: "absolute",
+                  left: `calc(${todayPct * 100}% - 0.5px)`,
+                  top: 1,
+                  height: 16,
+                  width: 1,
+                  background: "var(--text-muted)",
+                  opacity: 0.5,
+                  pointerEvents: "none",
+                }}
+              />
+              {/* Tiny "today" label nub on top of the marker */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: `calc(${todayPct * 100}% - 18px)`,
+                  top: -10,
+                  fontSize: 9,
+                  letterSpacing: 0.4,
+                  color: "var(--text-muted)",
+                  fontFamily: "ui-monospace, 'JetBrains Mono', 'Fira Code', monospace",
+                  textTransform: "uppercase",
+                  pointerEvents: "none",
+                }}
+              >
+                today
+              </div>
+            </>
+          )}
+          <input
+            type="range"
+            min={0}
+            max={1000}
+            value={Math.round(sliderPct * 1000)}
+            onChange={(e) => {
+              const v = Number(e.target.value) / 1000;
+              const startMs = new Date(data.hubStart + "T00:00:00Z").getTime();
+              const endMs = new Date(data.hubEnd + "T00:00:00Z").getTime();
+              const target = startMs + (endMs - startMs) * v;
+              setPlaying(false);
+              setSliderDate(new Date(target).toISOString().slice(0, 10));
+            }}
+            className="galaxy-range"
+            style={{ width: "100%" }}
+          />
+        </div>
+
         <span
-          className="font-mono"
+          className="text-caption font-mono"
+          style={{ color: "var(--text-faint)", letterSpacing: 0.3, flexShrink: 0, minWidth: 78, textAlign: "right" }}
+        >
+          {data.hubEnd}
+        </span>
+
+        <span
+          className="text-caption font-mono"
           style={{
-            color: COSMOS.text,
-            fontSize: 11,
-            minWidth: 90,
+            color: "var(--accent)",
+            letterSpacing: 0.4,
+            flexShrink: 0,
+            minWidth: 78,
             textAlign: "right",
-            letterSpacing: 0.5,
-            textShadow: `0 0 6px ${COSMOS.starTag}33`,
+            paddingLeft: 6,
+            borderLeft: "1px solid var(--border-dim)",
           }}
+          title="Current cursor date"
         >
           {sliderDate || data.hubEnd}
         </span>
-      </div>
+
+        <GalaxyButton onClick={handleRecentre} title="Recentre / fit to view">
+          <Maximize2 width={12} height={12} />
+          <span>Fit</span>
+        </GalaxyButton>
+        <GalaxyButton
+          primary
+          active={playing}
+          onClick={() => {
+            if (playing) { setPlaying(false); return; }
+            setSliderDate(data.hubStart);
+            setPlaying(true);
+          }}
+          title={playing ? "Pause replay" : "Replay growth from the beginning"}
+        >
+          {playing ? <Pause width={12} height={12} /> : <Play width={12} height={12} />}
+          <span>{playing ? "Pause" : "Growth"}</span>
+        </GalaxyButton>
+      </footer>
     </div>
   );
 }
