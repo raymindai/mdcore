@@ -17,6 +17,7 @@ import Link from "next/link";
 import {
   Layers, Copy, Check, ExternalLink, Globe, Eye, Cloud, Users,
   ShieldAlert, Sparkles, ArrowUpRight, Lightbulb, FileWarning,
+  Network,
 } from "lucide-react";
 import DocStatusIcon from "@/components/DocStatusIcon";
 import MdfyLogo from "@/components/MdfyLogo";
@@ -464,6 +465,29 @@ export default function HubEmbed({
                 {data.hub.description}
               </p>
             )}
+            {/* Galaxy CTA — owner-only entry into /galaxy. Sits right
+                under the bio so the visual rhythm is "who am I" → "see
+                this as a constellation." Opens in a new tab; /galaxy
+                is its own full-canvas surface, not an overlay. */}
+            <Link
+              href="/galaxy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-caption font-mono mt-3 px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+              style={{
+                color: "var(--accent)",
+                background: "var(--accent-dim)",
+                border: "1px solid var(--accent-dim)",
+                textDecoration: "none",
+                letterSpacing: 0.3,
+                width: "fit-content",
+              }}
+              title="Open your hub as a constellation"
+            >
+              <Network width={11} height={11} />
+              <span>Dive into my Galaxy</span>
+              <ArrowUpRight width={11} height={11} />
+            </Link>
           </div>
         </header>
 
