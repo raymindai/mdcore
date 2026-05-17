@@ -239,10 +239,14 @@ export default function HubEmbed({
   // to render. With a snapshot we revalidate in the background.
   const [loading, setLoading] = useState(!cachedEntry);
   const [copied, setCopied] = useState(false);
-  const [copiedAgents, setCopiedAgents] = useState(false);
   // Separate state for the "?full=1" copy button so the two pills
   // don't share a single "Copied" green flash.
   const [copiedFull, setCopiedFull] = useState(false);
+  // Per-tool setup tab — drives which snippet shows in the "Setup
+  // snippet for your tool" card. Claude as the default since chat
+  // surfaces are the most common deploy target.
+  const [activeTool, setActiveTool] = useState<string>("claude");
+  const [copiedTool, setCopiedTool] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<HubSuggestions | null>(null);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [busySuggestionId, setBusySuggestionId] = useState<string | null>(null);
@@ -579,73 +583,273 @@ export default function HubEmbed({
               <span className="hidden sm:inline">{copiedFull ? "Copied" : "Copy"}</span>
             </span>
           </button>
-          {/* Auto-load in AI dev tools. Was a single link row;
-              expanded to a real copy-able snippet so the user can
-              skip the round-trip to /docs/integrate when they
-              already know the destination. AGENTS.md is the
-              cross-tool path (Codex / Claude Code / Aider all read
-              it) — keeps the snippet count to one. Per-tool variants
-              still link out for users on Cursor / Gemini / Windsurf
-              who need their tool's specific file name. */}
-          <div
-            className="mb-3 rounded-lg overflow-hidden"
-            style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}
-          >
-            <div className="flex items-baseline justify-between px-3 py-2" style={{ borderBottom: "1px solid var(--border-dim)" }}>
-              <span className="text-caption font-mono uppercase tracking-wider" style={{ color: "var(--accent)", fontSize: 10, letterSpacing: 0.5 }}>
-                AGENTS.md / CLAUDE.md
-              </span>
-              <span className="text-caption" style={{ color: "var(--text-faint)" }}>
-                Auto-loads on every AI session
-              </span>
-            </div>
-            <pre
-              className="px-3 py-2 text-caption font-mono whitespace-pre-wrap"
-              style={{ color: "var(--text-primary)", margin: 0, fontSize: 11, lineHeight: 1.6 }}
-            >{`# Project context
+          {/* Per-tool setup. Two-row tab layout:
+                Row 1 — "where you do AI" (Claude / ChatGPT / Gemini /
+                Claude Code / Cursor / Generic), ordered by likely-
+                use frequency (chat surfaces first, IDE next).
+                Row 2 — "mdfy native" runtime (MCP / Skill / CLI)
+                under a small "via mdfy:" label so users see them
+                as add-on capabilities, not yet-another-vendor.
+              The active tab's snippet card carries a one-line hint,
+              the snippet itself, a multi-sentence user-friendly
+              explanation, a Copy button, and a "Full guide →" link
+              to the relevant /docs page. */}
+          {(() => {
+            const url = data.hub.url;
+            const projCtx = `# Project context
 
-mdfy hub: ${data.hub.url}
+mdfy hub: ${url}
 
 Fetch this URL on every session. The response carries clean
 markdown of the user's knowledge graph (concept index, bundle
-analyses, doc list) — paste-and-go context.`}</pre>
-            <div className="flex items-center justify-between gap-2 px-3 py-2" style={{ borderTop: "1px solid var(--border-dim)" }}>
-              <button
-                onClick={async () => {
-                  if (typeof navigator === "undefined" || !navigator.clipboard) return;
-                  try {
-                    await navigator.clipboard.writeText(`# Project context
+analyses, doc list) — paste-and-go context.`;
+            const cursorRule = `---
+description: mdfy hub context
+alwaysApply: true
+---
+mdfy hub: ${url}
 
-mdfy hub: ${data.hub.url}
+Fetch this URL on every session for the user's knowledge graph
+(concept index, bundle analyses, doc list).`;
+            const mcpConfig = `{
+  "mcpServers": {
+    "mdfy": {
+      "command": "npx",
+      "args": ["-y", "mdfy-mcp"]
+    }
+  }
+}`;
+            const skillUse = `# Install once
+claude skill install mdfy
 
-Fetch this URL on every session. The response carries clean
-markdown of the user's knowledge graph (concept index, bundle
-analyses, doc list) — paste-and-go context.`);
-                    setCopiedAgents(true);
-                    setTimeout(() => setCopiedAgents(false), 1500);
-                  } catch { /* clipboard blocked */ }
-                }}
-                className="flex items-center gap-1 text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
-                style={{
-                  background: "var(--surface)",
-                  color: copiedAgents ? "#22c55e" : "var(--text-primary)",
-                  border: `1px solid ${copiedAgents ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
-                }}
-                title="Copy snippet"
-              >
-                {copiedAgents ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
-                <span>{copiedAgents ? "Copied" : "Copy snippet"}</span>
-              </button>
-              <Link
-                href="/docs/integrate"
-                target="_blank"
-                className="text-caption font-mono"
-                style={{ color: "var(--accent)" }}
-              >
-                Per-tool variants →
-              </Link>
-            </div>
-          </div>
+# Inside any Claude Code session
+/mdfy capture "your idea"
+/mdfy search "topic"
+/mdfy hub`;
+            const cliUse = `npm install -g mdfy-cli
+
+mdfy capture "your idea"
+mdfy search "topic"
+mdfy hub`;
+
+            type Tool = {
+              id: string;
+              label: string;
+              group: "user" | "native";
+              hint: string;
+              snippet: string;
+              savePath?: string;
+              explanation: string;
+              docHref: string;
+            };
+            const TOOLS: Tool[] = [
+              {
+                id: "claude",
+                label: "Claude",
+                group: "user",
+                hint: "Drop the URL into a Claude chat",
+                snippet: url,
+                explanation:
+                  "Works the same in Claude.ai (web) and the Mac / Windows desktop app. Claude fetches the digest — a compact concept map of your hub — and follows the inline links to specific docs as needed. Append ?full=1 if you want every doc inlined up-front.",
+                docHref: "/docs/integrate",
+              },
+              {
+                id: "chatgpt",
+                label: "ChatGPT",
+                group: "user",
+                hint: "Drop the URL into a ChatGPT chat",
+                snippet: url,
+                explanation:
+                  "Works in ChatGPT web and the Mac desktop app. ChatGPT fetches the URL with its built-in browser tool, reads the digest, and follows the inline links into specific docs when it needs more context.",
+                docHref: "/docs/integrate",
+              },
+              {
+                id: "gemini",
+                label: "Gemini",
+                group: "user",
+                hint: "Drop the URL into Gemini (web or app)",
+                snippet: url,
+                explanation:
+                  "Gemini reads the URL via its built-in tool use. Same digest format as Claude and ChatGPT — concept map first, then drill-down. Works in Gemini web and the Gemini mobile / desktop app.",
+                docHref: "/docs/integrate#gemini",
+              },
+              {
+                id: "claude-code",
+                label: "Claude Code",
+                group: "user",
+                hint: "Save as CLAUDE.md in your project root",
+                snippet: projCtx,
+                savePath: "CLAUDE.md",
+                explanation:
+                  "Claude Code auto-loads CLAUDE.md at the start of every session. Once you save the snippet to your project root, every Claude Code conversation in that repo starts with your hub already in context — no need to paste anything by hand.",
+                docHref: "/docs/integrate#claude-code",
+              },
+              {
+                id: "cursor",
+                label: "Cursor",
+                group: "user",
+                hint: "Save as .cursor/rules/mdfy.mdc in your project root",
+                snippet: cursorRule,
+                savePath: ".cursor/rules/mdfy.mdc",
+                explanation:
+                  "Cursor's Rules feature reads .mdc files from .cursor/rules/. The alwaysApply: true frontmatter keeps your hub URL in context on every chat in the repo, including ad-hoc questions.",
+                docHref: "/docs/integrate#cursor",
+              },
+              {
+                id: "generic",
+                label: "Generic",
+                group: "user",
+                hint: "Paste this URL into any AI that can fetch a webpage",
+                snippet: url,
+                explanation:
+                  "Any LLM with web-fetch (or a configured browser tool) works. Useful URL variants you can append:\n  ?digest=1&compact=1  — densest summary, ~30× cheaper to paste\n  ?full=1              — every doc inline, heaviest\n  /llms.txt            — manifest for crawlers",
+                docHref: "/docs/integrate",
+              },
+              {
+                id: "mcp",
+                label: "MCP",
+                group: "native",
+                hint: "Add mdfy-mcp to your MCP host config",
+                snippet: mcpConfig,
+                explanation:
+                  "Compatible with Claude Desktop, Cursor, Cline, Windsurf, and any MCP-capable host. Exposes 26 tools across capture / bundle / search / share / version history — so the AI can write into your hub, not just read it.",
+                docHref: "/docs/mcp",
+              },
+              {
+                id: "skill",
+                label: "Skill",
+                group: "native",
+                hint: "Use /mdfy slash commands inside Claude Code",
+                snippet: skillUse,
+                explanation:
+                  "Install once with `claude skill install mdfy`. Then in any Claude Code session, run slash commands like /mdfy capture, /mdfy search, /mdfy hub. The skill is namespaced so it doesn't collide with Claude's built-ins.",
+                docHref: "/docs/integrate",
+              },
+              {
+                id: "cli",
+                label: "CLI",
+                group: "native",
+                hint: "Capture and search from your terminal",
+                snippet: cliUse,
+                explanation:
+                  "Globally-installed npm package. Run mdfy capture, mdfy search, mdfy hub from any directory. Handy for scripting, terminal-first workflows, or piping shell output into your hub.",
+                docHref: "/docs/cli",
+              },
+            ];
+            const active = TOOLS.find((t) => t.id === activeTool) || TOOLS[0];
+            const userTools = TOOLS.filter((t) => t.group === "user");
+            const nativeTools = TOOLS.filter((t) => t.group === "native");
+
+            const TabBtn = ({ t }: { t: Tool }) => {
+              const isActive = activeTool === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTool(t.id)}
+                  className="text-caption font-mono px-2.5 py-1 rounded transition-colors"
+                  style={{
+                    background: isActive ? "var(--accent-dim)" : "transparent",
+                    color: isActive ? "var(--accent)" : "var(--text-muted)",
+                    border: `1px solid ${isActive ? "var(--accent-dim)" : "var(--border-dim)"}`,
+                    letterSpacing: 0.3,
+                  }}
+                >
+                  {t.label}
+                </button>
+              );
+            };
+
+            return (
+              <div className="mb-3">
+                {/* Section label */}
+                <div className="text-caption font-mono uppercase tracking-wider mb-2"
+                  style={{ color: "var(--text-faint)", fontSize: 10, letterSpacing: 0.5 }}>
+                  Setup snippet for your tool
+                </div>
+
+                {/* Row 1 — user surfaces */}
+                <div className="flex flex-wrap gap-1.5 items-center mb-1.5">
+                  {userTools.map((t) => <TabBtn key={t.id} t={t} />)}
+                </div>
+
+                {/* Row 2 — mdfy native runtime */}
+                <div className="flex flex-wrap gap-1.5 items-center mb-3">
+                  <span className="text-caption font-mono mr-1"
+                    style={{ color: "var(--text-faint)", letterSpacing: 0.3 }}>
+                    via mdfy:
+                  </span>
+                  {nativeTools.map((t) => <TabBtn key={t.id} t={t} />)}
+                </div>
+
+                {/* Active tab card */}
+                <div className="rounded-lg overflow-hidden"
+                  style={{ background: "var(--background)", border: "1px solid var(--border-dim)" }}>
+                  {/* Header: where to put it + tool name */}
+                  <div className="flex items-baseline justify-between px-3 py-2 gap-2"
+                    style={{ borderBottom: "1px solid var(--border-dim)" }}>
+                    <span className="text-caption font-mono uppercase tracking-wider truncate"
+                      style={{ color: "var(--accent)", fontSize: 10, letterSpacing: 0.5 }}>
+                      {active.savePath ? (
+                        <>Save to <span style={{ color: "var(--text-primary)" }}>{active.savePath}</span></>
+                      ) : (
+                        <>{active.hint}</>
+                      )}
+                    </span>
+                    <span className="text-caption shrink-0" style={{ color: "var(--text-faint)" }}>
+                      {active.label}
+                    </span>
+                  </div>
+
+                  {/* Snippet */}
+                  <pre
+                    className="px-3 py-2 text-caption font-mono whitespace-pre-wrap"
+                    style={{ color: "var(--text-primary)", margin: 0, fontSize: 11, lineHeight: 1.6 }}
+                  >{active.snippet}</pre>
+
+                  {/* Explanation — user-friendly multi-sentence */}
+                  <div className="px-3 py-2.5 text-caption leading-relaxed"
+                    style={{ color: "var(--text-secondary)", background: "var(--surface)", borderTop: "1px solid var(--border-dim)" }}>
+                    {active.explanation.split("\n").map((line, i) => (
+                      <div key={i} style={{ whiteSpace: "pre" }}>{line || " "}</div>
+                    ))}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between gap-2 px-3 py-2"
+                    style={{ borderTop: "1px solid var(--border-dim)" }}>
+                    <button
+                      onClick={async () => {
+                        if (typeof navigator === "undefined" || !navigator.clipboard) return;
+                        try {
+                          await navigator.clipboard.writeText(active.snippet);
+                          setCopiedTool(active.id);
+                          setTimeout(() => setCopiedTool(null), 1500);
+                        } catch { /* clipboard blocked */ }
+                      }}
+                      className="flex items-center gap-1 text-caption px-2.5 py-1 rounded transition-colors hover:bg-[var(--toggle-bg)]"
+                      style={{
+                        background: "var(--surface)",
+                        color: copiedTool === active.id ? "#22c55e" : "var(--text-primary)",
+                        border: `1px solid ${copiedTool === active.id ? "rgba(34,197,94,0.4)" : "var(--border-dim)"}`,
+                      }}
+                      title="Copy snippet"
+                    >
+                      {copiedTool === active.id ? <Check width={11} height={11} /> : <Copy width={11} height={11} />}
+                      <span>{copiedTool === active.id ? "Copied" : "Copy"}</span>
+                    </button>
+                    <Link
+                      href={active.docHref}
+                      target="_blank"
+                      className="text-caption font-mono"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      Full guide →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
           {/* Secondary actions sit on the surface-tinted card, so a
               bordered-only treatment fades into the card background.
               Adding var(--background) fill puts them one step darker
