@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { Play, Pause, Maximize2 } from "lucide-react";
+import { Play, Pause, Maximize2, ChevronLeft } from "lucide-react";
 import ELK from "elkjs/lib/elk.bundled.js";
 
 interface ApiNode {
@@ -347,6 +347,12 @@ export default function HubGalaxy({ authHeaders }: Props) {
   const cameraAnimRef = useRef<number | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; viewX: number; viewY: number; moved: boolean } | null>(null);
   const prevVisibleIdsRef = useRef<Set<string>>(new Set());
+  // Pan throttle — coalesce many mousemoves into one setView per frame.
+  const pendingViewRef = useRef<{ x: number; y: number } | null>(null);
+  const moveRafRef = useRef<number | null>(null);
+  // Hover throttle — collapse rapid hover changes to one per frame.
+  const pendingHoverRef = useRef<{ id: string | null } | null>(null);
+  const hoverRafRef = useRef<number | null>(null);
 
   // Fetch
   useEffect(() => {
@@ -475,7 +481,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
   const visible = useMemo(() => {
     if (!data) return { nodes: [] as Positioned[], edges: [] as ApiEdge[], neighbours: new Set<string>(), hoverNeighbours: new Set<string>() };
-    const cutoff = (sliderDate || data.hubEnd) + "T23:59:59Z";
+    // Strict start-of-day boundary so scrubbing back to hubStart
+    // actually empties the canvas (end-of-day kept too much around
+    // and made the scrub feel broken).
+    const cutoff = (sliderDate || data.hubEnd) + "T00:00:00Z";
     const term = searchTerm.trim().toLowerCase();
     const visibleIds = new Set<string>();
     for (const n of data.nodes) {
@@ -516,7 +525,10 @@ export default function HubGalaxy({ authHeaders }: Props) {
   // the bundle fills out.
   const nebulae = useMemo<NebulaBlob[]>(() => {
     if (!data || all.length === 0) return [];
-    const cutoff = (sliderDate || data.hubEnd) + "T23:59:59Z";
+    // Strict start-of-day boundary so scrubbing back to hubStart
+    // actually empties the canvas (end-of-day kept too much around
+    // and made the scrub feel broken).
+    const cutoff = (sliderDate || data.hubEnd) + "T00:00:00Z";
     const byBundle = new Map<string, Positioned[]>();
     for (const n of all) {
       if (n.api.kind !== "doc" || !n.api.bundleId) continue;
@@ -659,20 +671,55 @@ export default function HubGalaxy({ authHeaders }: Props) {
     dragRef.current = {
       startX: e.clientX,
       startY: e.clientY,
-      viewX: view.x,
-      viewY: view.y,
+      viewX: viewRef.current.x,
+      viewY: viewRef.current.y,
       moved: false,
     };
-  }, [view.x, view.y]);
+  }, []);
+  // RAF-throttled pan. Two things matter here:
+  //  1) Capture viewX/viewY into LOCALS before setView. If we read
+  //     dragRef.current inside the updater closure, mouseup may have
+  //     fired between the early-return check and the setter being
+  //     invoked, leaving dragRef null and crashing with
+  //     "cannot read properties of null (reading 'viewX')".
+  //  2) Coalesce multiple mousemoves into one setView per frame so
+  //     the SVG tree (200+ stars) doesn't re-render at the OS event
+  //     rate (which can be 1000+ Hz on high-end mice).
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!dragRef.current) return;
-    const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
-    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragRef.current.moved = true;
-    setView((v) => ({ ...v, x: dragRef.current!.viewX + dx, y: dragRef.current!.viewY + dy }));
+    const ref = dragRef.current;
+    if (!ref) return;
+    const dx = e.clientX - ref.startX;
+    const dy = e.clientY - ref.startY;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) ref.moved = true;
+    const nextX = ref.viewX + dx;
+    const nextY = ref.viewY + dy;
+    pendingViewRef.current = { x: nextX, y: nextY };
+    if (moveRafRef.current !== null) return;
+    moveRafRef.current = requestAnimationFrame(() => {
+      moveRafRef.current = null;
+      const p = pendingViewRef.current;
+      pendingViewRef.current = null;
+      if (!p) return;
+      setView((v) => ({ ...v, x: p.x, y: p.y }));
+    });
   }, []);
   const handleMouseUp = useCallback(() => {
     dragRef.current = null;
+  }, []);
+
+  // RAF-throttled hover — onMouseEnter / Leave can fire many times
+  // per frame as the cursor crosses adjacent SVG hit areas. Without
+  // this, every micro-movement triggers a full SVG re-render.
+  const queueHover = useCallback((id: string | null) => {
+    pendingHoverRef.current = { id };
+    if (hoverRafRef.current !== null) return;
+    hoverRafRef.current = requestAnimationFrame(() => {
+      hoverRafRef.current = null;
+      const p = pendingHoverRef.current;
+      pendingHoverRef.current = null;
+      if (!p) return;
+      setHoveredId((h) => (h === p.id ? h : p.id));
+    });
   }, []);
 
   useEffect(() => {
@@ -856,27 +903,76 @@ export default function HubGalaxy({ authHeaders }: Props) {
 
       <header
         style={{
-          height: 40,
+          height: 44,
           display: "flex",
           alignItems: "center",
-          padding: "0 16px",
+          padding: "0 14px",
           borderBottom: "1px solid var(--border-dim)",
-          gap: 16,
+          gap: 14,
           flexShrink: 0,
           background: "var(--header-bg)",
           backdropFilter: "blur(12px)",
           zIndex: 3,
         }}
       >
-        <Link href="/" className="text-caption" style={{ color: "var(--text-muted)", textDecoration: "none" }}>
-          ← Back
+        <Link
+          href="/"
+          className="text-caption"
+          style={{
+            color: "var(--text-muted)",
+            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+          title="Back to editor"
+        >
+          <ChevronLeft width={14} height={14} />
+          Back
         </Link>
-        <span className="text-caption font-mono uppercase" style={{ color: "var(--text-primary)", letterSpacing: 1.5, fontWeight: 600 }}>
+
+        <span style={{ width: 1, height: 14, background: "var(--border-dim)" }} />
+
+        <span
+          className="text-caption font-mono uppercase"
+          style={{ color: "var(--text-primary)", letterSpacing: 1.8, fontWeight: 600 }}
+        >
           Galaxy
         </span>
-        <span className="text-caption font-mono" style={{ color: "var(--text-faint)", letterSpacing: 0.3 }}>
-          {data.counts.nodes} stars / {data.clusters.length} nebulae
-        </span>
+
+        <span style={{ flex: 1 }} />
+
+        {/* Stats — three discrete counts, mono, faint. */}
+        <div
+          className="text-caption font-mono"
+          style={{
+            color: "var(--text-faint)",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            letterSpacing: 0.3,
+          }}
+        >
+          <span>
+            <span style={{ color: "var(--text-secondary)" }}>{data.counts.nodes}</span>
+            {" stars"}
+          </span>
+          <span>
+            <span style={{ color: "var(--text-secondary)" }}>{data.clusters.length}</span>
+            {" nebulae"}
+          </span>
+          <span>
+            <span style={{ color: "var(--text-secondary)" }}>{data.counts.edges}</span>
+            {" threads"}
+          </span>
+        </div>
+
+        <span style={{ width: 1, height: 14, background: "var(--border-dim)" }} />
+
+        <GalaxyButton onClick={handleRecentre} title="Fit galaxy to view">
+          <Maximize2 width={11} height={11} />
+          <span>Fit</span>
+        </GalaxyButton>
       </header>
 
       <div style={{ flex: 1, display: "flex", minHeight: 0, position: "relative", zIndex: 1 }}>
@@ -1058,13 +1154,6 @@ export default function HubGalaxy({ authHeaders }: Props) {
           ref={containerRef}
           style={{ flex: 1, minWidth: 0, position: "relative", cursor: dragRef.current ? "grabbing" : "grab" }}
         >
-          <div style={{ position: "absolute", top: 12, right: 12, zIndex: 5, display: "flex", gap: 6 }}>
-            <GalaxyButton floating onClick={handleRecentre} title="Fit to view">
-              <Maximize2 width={12} height={12} />
-              <span>Fit</span>
-            </GalaxyButton>
-          </div>
-
           <svg
             ref={svgRef}
             width="100%"
@@ -1167,6 +1256,15 @@ export default function HubGalaxy({ authHeaders }: Props) {
                   const a = positions?.get(e.source);
                   const b = positions?.get(e.target);
                   if (!a || !b) return null;
+                  // Viewport cull — skip if BOTH endpoints offscreen.
+                  const aScreenX = view.x + a.x * view.k;
+                  const aScreenY = view.y + a.y * view.k;
+                  const bScreenX = view.x + b.x * view.k;
+                  const bScreenY = view.y + b.y * view.k;
+                  const m = 140;
+                  const aOut = aScreenX < -m || aScreenX > size.w + m || aScreenY < -m || aScreenY > size.h + m;
+                  const bOut = bScreenX < -m || bScreenX > size.w + m || bScreenY < -m || bScreenY > size.h + m;
+                  if (aOut && bOut) return null;
                   const sourceInFocus = focusSet.has(e.source);
                   const targetInFocus = focusSet.has(e.target);
                   // When focusing, drop entirely unless both endpoints
@@ -1244,9 +1342,22 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 ))}
               </g>
 
-              {/* Stars */}
+              {/* Stars. Viewport-culled (skip anything offscreen by
+                  more than a star's worth of margin) and animations
+                  scoped to stars where they're actually visible —
+                  ~400 simultaneous CSS animations was crushing the
+                  compositor. Now only large + on-focus stars float;
+                  tiny dimmed stars get nothing. */}
               <g>
                 {visible.nodes.map((n, idx) => {
+                  // Viewport culling — convert world coord to screen and
+                  // skip if outside the canvas (+ margin for halo bleed).
+                  const sx = view.x + n.x * view.k;
+                  const sy = view.y + n.y * view.k;
+                  const cullMargin = 100;
+                  if (sx < -cullMargin || sx > size.w + cullMargin) return null;
+                  if (sy < -cullMargin || sy > size.h + cullMargin) return null;
+
                   const isSelected = n.id === selectedId;
                   const isHovered = n.id === hoveredId;
                   const dimmed = focusing && !focusSet.has(n.id);
@@ -1257,6 +1368,13 @@ export default function HubGalaxy({ authHeaders }: Props) {
                       ? `url(#halo-doc-${n.api.bundleId})`
                       : `url(#halo-${n.api.kind})`;
                   const showLabel = isSelected || isHovered || (focusing && focusSet.has(n.id)) || view.k >= 1.4;
+                  // Animation gates — kill anims when:
+                  //   - dimmed (no point animating something invisible)
+                  //   - very small at low zoom (sub-pixel motion is noise)
+                  // Float only on giants OR focused stars.
+                  const animEnabled = !dimmed && view.k >= 0.45;
+                  const floatEnabled = animEnabled && (n.size > 3 || isSelected || isHovered);
+                  const twinkleEnabled = animEnabled;
                   const floatIdx = idx % 4;
                   const period = 7 + (idx % 7);
                   return (
@@ -1272,8 +1390,8 @@ export default function HubGalaxy({ authHeaders }: Props) {
                         e.stopPropagation();
                         handleStarDoubleClick(n);
                       }}
-                      onMouseEnter={() => setHoveredId(n.id)}
-                      onMouseLeave={() => setHoveredId((h) => (h === n.id ? null : h))}
+                      onMouseEnter={() => queueHover(n.id)}
+                      onMouseLeave={() => queueHover(null)}
                       style={{
                         cursor: "pointer",
                         opacity: dimmed ? 0.05 : 1,
@@ -1293,18 +1411,18 @@ export default function HubGalaxy({ authHeaders }: Props) {
                       )}
                       <g
                         className="galaxy-star"
-                        style={{
+                        style={floatEnabled ? {
                           animation: `galaxyFloat${floatIdx} ${period}s ease-in-out infinite`,
                           animationDelay: `-${n.twinkleDelay * 1.2}s`,
-                        }}
+                        } : undefined}
                       >
                         <circle
                           r={haloR}
                           fill={haloFill}
-                          style={{
+                          style={twinkleEnabled ? {
                             animation: `galaxyTwinkle ${5 + (n.twinkleDelay % 4)}s ease-in-out infinite`,
                             animationDelay: `-${n.twinkleDelay}s`,
-                          }}
+                          } : undefined}
                         />
                         <circle
                           r={coreR}
@@ -1519,54 +1637,44 @@ export default function HubGalaxy({ authHeaders }: Props) {
         )}
       </div>
 
-      {/* Scrubber — [start] [slider w/ cursor pill] [end] [▶ Growth] */}
+      {/* Timeline — three rows: cursor date / slider+Growth / range bounds.
+          A proper timeline player look: dates breathe; the slider is one
+          uncluttered track; Growth sits at the right like a play button. */}
       <footer
         style={{
-          height: 56,
+          height: 66,
           display: "flex",
-          alignItems: "center",
-          padding: "0 14px",
+          flexDirection: "column",
+          padding: "8px 16px 10px",
           borderTop: "1px solid var(--border-dim)",
-          gap: 12,
+          gap: 4,
           flexShrink: 0,
           background: "var(--header-bg)",
           backdropFilter: "blur(12px)",
           zIndex: 3,
         }}
       >
-        <span
-          className="text-caption font-mono"
-          style={{ color: "var(--text-faint)", letterSpacing: 0.3, flexShrink: 0, minWidth: 78 }}
-        >
-          {data.hubStart}
-        </span>
-
-        <div style={{ flex: 1, position: "relative", height: 40, display: "flex", alignItems: "center" }}>
-          {/* Cursor date — centred on the thumb, raised above the track
-              so it doesn't collide with the grab handle. */}
-          <div
+        {/* Row 1 — cursor date follows the thumb, accent. */}
+        <div style={{ position: "relative", height: 14, marginRight: 96 /* leave room for Growth btn alignment */ }}>
+          <span
+            className="text-caption font-mono"
             style={{
               position: "absolute",
               left: `${sliderPct * 100}%`,
               transform: "translateX(-50%)",
-              top: 0,
-              padding: "2px 8px",
-              fontSize: 10,
               color: "var(--accent)",
-              background: "rgba(9, 9, 11, 0.9)",
-              border: "1px solid var(--accent-dim)",
-              borderRadius: 4,
-              fontFamily: "ui-monospace, 'JetBrains Mono', 'Fira Code', monospace",
               letterSpacing: 0.3,
               fontWeight: 600,
-              pointerEvents: "none",
               whiteSpace: "nowrap",
               transition: "left 0.05s linear",
             }}
           >
             {sliderDate || data.hubEnd}
-          </div>
+          </span>
+        </div>
 
+        {/* Row 2 — slider track + Growth */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <input
             type="range"
             min={0}
@@ -1581,30 +1689,32 @@ export default function HubGalaxy({ authHeaders }: Props) {
               setSliderDate(new Date(target).toISOString().slice(0, 10));
             }}
             className="galaxy-range"
-            style={{ width: "100%", position: "absolute", bottom: 4, left: 0 }}
+            style={{ flex: 1 }}
           />
+          <GalaxyButton
+            primary
+            active={playing}
+            onClick={() => {
+              if (playing) { setPlaying(false); return; }
+              setSliderDate(data.hubStart);
+              setPlaying(true);
+            }}
+            title={playing ? "Pause replay" : "Replay growth from the beginning"}
+          >
+            {playing ? <Pause width={11} height={11} /> : <Play width={11} height={11} />}
+            <span>{playing ? "Pause" : "Growth"}</span>
+          </GalaxyButton>
         </div>
 
-        <span
-          className="text-caption font-mono"
-          style={{ color: "var(--text-faint)", letterSpacing: 0.3, flexShrink: 0, minWidth: 78, textAlign: "right" }}
-        >
-          {data.hubEnd}
-        </span>
-
-        <GalaxyButton
-          primary
-          active={playing}
-          onClick={() => {
-            if (playing) { setPlaying(false); return; }
-            setSliderDate(data.hubStart);
-            setPlaying(true);
-          }}
-          title={playing ? "Pause replay" : "Replay growth from the beginning"}
-        >
-          {playing ? <Pause width={12} height={12} /> : <Play width={12} height={12} />}
-          <span>{playing ? "Pause" : "Growth"}</span>
-        </GalaxyButton>
+        {/* Row 3 — range bounds */}
+        <div style={{ display: "flex", justifyContent: "space-between", marginRight: 96 }}>
+          <span className="text-caption font-mono" style={{ color: "var(--text-faint)", letterSpacing: 0.3 }}>
+            {data.hubStart}
+          </span>
+          <span className="text-caption font-mono" style={{ color: "var(--text-faint)", letterSpacing: 0.3 }}>
+            {data.hubEnd}
+          </span>
+        </div>
       </footer>
     </div>
   );
