@@ -589,6 +589,19 @@ export default function HubGalaxy({ authHeaders }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
 
+  // Auto-clear selection / hover when the target leaves the visible set.
+  // Without this, scrubbing back leaves a stale selectedId pointing at
+  // a future star — focusing mode stays on, edges draw to nodes that
+  // aren't rendered, and the canvas reads as broken.
+  useEffect(() => {
+    if (selectedId && !visible.nodes.some((n) => n.id === selectedId)) {
+      setSelectedId(null);
+    }
+    if (hoveredId && !visible.nodes.some((n) => n.id === hoveredId)) {
+      setHoveredId(null);
+    }
+  }, [visible.nodes, selectedId, hoveredId]);
+
   // Ignite tracker — same as before, only during active play
   useEffect(() => {
     const currentIds = new Set(visible.nodes.map((n) => n.id));
@@ -1637,44 +1650,34 @@ export default function HubGalaxy({ authHeaders }: Props) {
         )}
       </div>
 
-      {/* Timeline — three rows: cursor date / slider+Growth / range bounds.
-          A proper timeline player look: dates breathe; the slider is one
-          uncluttered track; Growth sits at the right like a play button. */}
+      {/* Timeline — single, clean row. hubStart / [slider with cursor
+          date floating below the thumb] / hubEnd / Growth. No multi-row
+          stacking, no border pills, just a scrubber. */}
       <footer
         style={{
-          height: 66,
+          height: 52,
           display: "flex",
-          flexDirection: "column",
-          padding: "8px 16px 10px",
+          alignItems: "center",
+          padding: "0 16px",
+          gap: 14,
           borderTop: "1px solid var(--border-dim)",
-          gap: 4,
           flexShrink: 0,
           background: "var(--header-bg)",
           backdropFilter: "blur(12px)",
           zIndex: 3,
         }}
       >
-        {/* Row 1 — cursor date follows the thumb, accent. */}
-        <div style={{ position: "relative", height: 14, marginRight: 96 /* leave room for Growth btn alignment */ }}>
-          <span
-            className="text-caption font-mono"
-            style={{
-              position: "absolute",
-              left: `${sliderPct * 100}%`,
-              transform: "translateX(-50%)",
-              color: "var(--accent)",
-              letterSpacing: 0.3,
-              fontWeight: 600,
-              whiteSpace: "nowrap",
-              transition: "left 0.05s linear",
-            }}
-          >
-            {sliderDate || data.hubEnd}
-          </span>
-        </div>
+        <span
+          className="text-caption font-mono"
+          style={{ color: "var(--text-faint)", letterSpacing: 0.3, flexShrink: 0, minWidth: 78 }}
+        >
+          {data.hubStart}
+        </span>
 
-        {/* Row 2 — slider track + Growth */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {/* Slider area — the slider sits at the top of this container;
+            the cursor-date label sits at the bottom, positioned at the
+            same percentage as the thumb so it always tracks. */}
+        <div style={{ flex: 1, position: "relative", height: 32, display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <input
             type="range"
             min={0}
@@ -1689,32 +1692,47 @@ export default function HubGalaxy({ authHeaders }: Props) {
               setSliderDate(new Date(target).toISOString().slice(0, 10));
             }}
             className="galaxy-range"
-            style={{ flex: 1 }}
+            style={{ width: "100%", position: "absolute", top: 4, left: 0 }}
           />
-          <GalaxyButton
-            primary
-            active={playing}
-            onClick={() => {
-              if (playing) { setPlaying(false); return; }
-              setSliderDate(data.hubStart);
-              setPlaying(true);
+          <span
+            className="text-caption font-mono"
+            style={{
+              position: "absolute",
+              left: `${sliderPct * 100}%`,
+              transform: "translateX(-50%)",
+              bottom: 0,
+              color: "var(--accent)",
+              letterSpacing: 0.3,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+              transition: "left 0.05s linear",
             }}
-            title={playing ? "Pause replay" : "Replay growth from the beginning"}
           >
-            {playing ? <Pause width={11} height={11} /> : <Play width={11} height={11} />}
-            <span>{playing ? "Pause" : "Growth"}</span>
-          </GalaxyButton>
+            {sliderDate || data.hubEnd}
+          </span>
         </div>
 
-        {/* Row 3 — range bounds */}
-        <div style={{ display: "flex", justifyContent: "space-between", marginRight: 96 }}>
-          <span className="text-caption font-mono" style={{ color: "var(--text-faint)", letterSpacing: 0.3 }}>
-            {data.hubStart}
-          </span>
-          <span className="text-caption font-mono" style={{ color: "var(--text-faint)", letterSpacing: 0.3 }}>
-            {data.hubEnd}
-          </span>
-        </div>
+        <span
+          className="text-caption font-mono"
+          style={{ color: "var(--text-faint)", letterSpacing: 0.3, flexShrink: 0, minWidth: 78, textAlign: "right" }}
+        >
+          {data.hubEnd}
+        </span>
+
+        <GalaxyButton
+          primary
+          active={playing}
+          onClick={() => {
+            if (playing) { setPlaying(false); return; }
+            setSliderDate(data.hubStart);
+            setPlaying(true);
+          }}
+          title={playing ? "Pause replay" : "Replay growth from the beginning"}
+        >
+          {playing ? <Pause width={11} height={11} /> : <Play width={11} height={11} />}
+          <span>{playing ? "Pause" : "Growth"}</span>
+        </GalaxyButton>
       </footer>
     </div>
   );
