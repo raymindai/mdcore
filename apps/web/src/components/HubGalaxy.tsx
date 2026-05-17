@@ -416,8 +416,8 @@ export default function HubGalaxy({ authHeaders }: Props) {
         : colourForKind(n.kind);
       const occ = n.occurrence || 1;
       const size = n.kind === "doc"
-        ? 1.8
-        : Math.max(1.3, Math.min(9, Math.sqrt(occ) * 1.8));
+        ? 2.6
+        : Math.max(1.6, Math.min(9, Math.sqrt(occ) * 1.8));
       return {
         id: n.id,
         x: p.x,
@@ -930,6 +930,29 @@ export default function HubGalaxy({ authHeaders }: Props) {
     for (const id of bundleFocusIds) focusSet.add(id);
   }
 
+  // Set of bundle ids that are "in focus" — used to dim nebulae that
+  // aren't part of the current focus. Without this, nebulae stayed at
+  // full opacity when a star was selected, fighting visually with the
+  // lit constellation.
+  const focusedBundleIds = new Set<string>();
+  if (hoveredBundleId) focusedBundleIds.add(hoveredBundleId);
+  function bundlesForNodeId(id: string | null) {
+    if (!id || !data) return;
+    const node = apiMap.get(id);
+    if (!node) return;
+    if (node.kind === "doc" && node.bundleId) focusedBundleIds.add(node.bundleId);
+    if (node.kind !== "doc" && node.docIds) {
+      const docIdSet = new Set(node.docIds);
+      for (const m of data.nodes) {
+        if (m.kind !== "doc" || !m.bundleId) continue;
+        const raw = m.id.startsWith("doc:") ? m.id.slice(4) : m.id;
+        if (docIdSet.has(raw)) focusedBundleIds.add(m.bundleId);
+      }
+    }
+  }
+  bundlesForNodeId(selectedId);
+  bundlesForNodeId(hoveredId);
+
   return (
     <div
       data-theme="dark"
@@ -1278,10 +1301,12 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 set goes through transitions (seen as "lines that
                 don't update"). */}
             <g key={`world-${sliderDate}`} transform={`translate(${view.x}, ${view.y}) scale(${view.k})`}>
-              {/* Nebulae */}
+              {/* Nebulae — also respect focus state. When something is
+                  selected/hovered/searched, nebulae unrelated to the
+                  focused node's bundle drop to a near-invisible 0.08. */}
               <g style={{ mixBlendMode: "screen" }}>
                 {nebulae.map((b, idx) => {
-                  const dimmed = hoveredBundleId !== null && hoveredBundleId !== b.id;
+                  const dimmed = focusing && !focusedBundleIds.has(b.id);
                   return (
                     <circle
                       key={b.id}
@@ -1290,7 +1315,7 @@ export default function HubGalaxy({ authHeaders }: Props) {
                       r={b.radius}
                       fill={`url(#neb-${b.id})`}
                       filter="url(#nebula-blur)"
-                      opacity={dimmed ? 0.15 : 1}
+                      opacity={dimmed ? 0.08 : 1}
                       style={{
                         animation: `galaxyNebulaDrift ${28 + (idx % 5) * 6}s ease-in-out infinite`,
                         animationDelay: `-${idx * 3.7}s`,
@@ -1302,62 +1327,90 @@ export default function HubGalaxy({ authHeaders }: Props) {
                 })}
               </g>
 
-              {/* Edges — only render those whose both endpoints are
-                  rendered AND, when focusing, both are in the focus
-                  set. This is what kills the ghost lines. */}
-              <g>
-                {visible.edges.map((e) => {
-                  const a = positions?.get(e.source);
-                  const b = positions?.get(e.target);
-                  if (!a || !b) return null;
-                  // Viewport cull — skip if BOTH endpoints offscreen.
-                  const aScreenX = view.x + a.x * view.k;
-                  const aScreenY = view.y + a.y * view.k;
-                  const bScreenX = view.x + b.x * view.k;
-                  const bScreenY = view.y + b.y * view.k;
-                  const m = 140;
-                  const aOut = aScreenX < -m || aScreenX > size.w + m || aScreenY < -m || aScreenY > size.h + m;
-                  const bOut = bScreenX < -m || bScreenX > size.w + m || bScreenY < -m || bScreenY > size.h + m;
-                  if (aOut && bOut) return null;
-                  const sourceInFocus = focusSet.has(e.source);
-                  const targetInFocus = focusSet.has(e.target);
-                  // When focusing, drop entirely unless both endpoints
-                  // are part of the focus.
-                  if (focusing && !(sourceInFocus && targetInFocus)) return null;
-                  const isSelectedEnd = selectedId !== null && (e.source === selectedId || e.target === selectedId);
-                  const isHoveredEnd = hoveredId !== null && hoveredId !== selectedId && (e.source === hoveredId || e.target === hoveredId);
-                  // Lit = touching the primary focus star OR both ends
-                  // are in focus (so neighbour-to-neighbour edges glow
-                  // too, completing the constellation).
-                  const isLit = isSelectedEnd || isHoveredEnd || (focusing && sourceInFocus && targetInFocus);
-                  let h = 0;
-                  for (let i = 0; i < e.id.length; i++) h = ((h << 5) - h + e.id.charCodeAt(i)) | 0;
-                  const dx = b.x - a.x;
-                  const dy = b.y - a.y;
-                  const len = Math.sqrt(dx * dx + dy * dy) || 1;
-                  const sign = (h & 1) ? 1 : -1;
-                  const bend = Math.min(60, len * 0.18) * sign;
-                  const cx = (a.x + b.x) / 2 + (-dy / len) * bend;
-                  const cy = (a.y + b.y) / 2 + (dx / len) * bend;
-                  const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
-                  return (
-                    <path
-                      key={e.id}
-                      d={d}
-                      fill="none"
-                      stroke={isLit ? SKY.starConcept : "#fafafa"}
-                      strokeOpacity={
-                        isLit
-                          ? 0.6
-                          : e.kind === "concept_concept" ? 0.09 : 0.05
-                      }
-                      strokeWidth={(isLit ? 0.85 : 0.35) / Math.max(0.5, view.k * 0.7)}
-                      strokeLinecap="round"
-                      filter={isLit ? "url(#thread-glow)" : undefined}
-                    />
-                  );
-                })}
-              </g>
+              {/* Edges, split into TWO conditional layers. When focus
+                  flips, the wrapper <g> on one side unmounts entirely
+                  — defensive against stale <path> elements ("white
+                  curves that don't go away after selecting a star"). */}
+              {!focusing && (
+                <g key="edges-base" style={{ pointerEvents: "none" }}>
+                  {visible.edges.map((e) => {
+                    const a = positions?.get(e.source);
+                    const b = positions?.get(e.target);
+                    if (!a || !b) return null;
+                    const aScreenX = view.x + a.x * view.k;
+                    const aScreenY = view.y + a.y * view.k;
+                    const bScreenX = view.x + b.x * view.k;
+                    const bScreenY = view.y + b.y * view.k;
+                    const m = 140;
+                    const aOut = aScreenX < -m || aScreenX > size.w + m || aScreenY < -m || aScreenY > size.h + m;
+                    const bOut = bScreenX < -m || bScreenX > size.w + m || bScreenY < -m || bScreenY > size.h + m;
+                    if (aOut && bOut) return null;
+                    let h = 0;
+                    for (let i = 0; i < e.id.length; i++) h = ((h << 5) - h + e.id.charCodeAt(i)) | 0;
+                    const dx = b.x - a.x;
+                    const dy = b.y - a.y;
+                    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const sign = (h & 1) ? 1 : -1;
+                    const bend = Math.min(60, len * 0.18) * sign;
+                    const cx = (a.x + b.x) / 2 + (-dy / len) * bend;
+                    const cy = (a.y + b.y) / 2 + (dx / len) * bend;
+                    const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+                    return (
+                      <path
+                        key={e.id}
+                        d={d}
+                        fill="none"
+                        stroke="#fafafa"
+                        strokeOpacity={e.kind === "concept_concept" ? 0.09 : 0.05}
+                        strokeWidth={0.35 / Math.max(0.5, view.k * 0.7)}
+                        strokeLinecap="round"
+                      />
+                    );
+                  })}
+                </g>
+              )}
+
+              {focusing && (
+                <g key="edges-focused" style={{ pointerEvents: "none" }}>
+                  {visible.edges
+                    .filter((e) => focusSet.has(e.source) && focusSet.has(e.target))
+                    .map((e) => {
+                      const a = positions?.get(e.source);
+                      const b = positions?.get(e.target);
+                      if (!a || !b) return null;
+                      const aScreenX = view.x + a.x * view.k;
+                      const aScreenY = view.y + a.y * view.k;
+                      const bScreenX = view.x + b.x * view.k;
+                      const bScreenY = view.y + b.y * view.k;
+                      const m = 140;
+                      const aOut = aScreenX < -m || aScreenX > size.w + m || aScreenY < -m || aScreenY > size.h + m;
+                      const bOut = bScreenX < -m || bScreenX > size.w + m || bScreenY < -m || bScreenY > size.h + m;
+                      if (aOut && bOut) return null;
+                      let h = 0;
+                      for (let i = 0; i < e.id.length; i++) h = ((h << 5) - h + e.id.charCodeAt(i)) | 0;
+                      const dx = b.x - a.x;
+                      const dy = b.y - a.y;
+                      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                      const sign = (h & 1) ? 1 : -1;
+                      const bend = Math.min(60, len * 0.18) * sign;
+                      const cx = (a.x + b.x) / 2 + (-dy / len) * bend;
+                      const cy = (a.y + b.y) / 2 + (dx / len) * bend;
+                      const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+                      return (
+                        <path
+                          key={e.id}
+                          d={d}
+                          fill="none"
+                          stroke={SKY.starConcept}
+                          strokeOpacity={0.65}
+                          strokeWidth={0.95 / Math.max(0.5, view.k * 0.7)}
+                          strokeLinecap="round"
+                          filter="url(#thread-glow)"
+                        />
+                      );
+                    })}
+                </g>
+              )}
 
               {/* Magnetic pulses */}
               <g style={{ pointerEvents: "none" }}>
